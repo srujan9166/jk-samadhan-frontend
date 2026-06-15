@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import MobileShowcase from './components/MobileShowcase';
 import AboutUs from './components/AboutUs';
 import StepsToLodge from './components/StepsToLodge';
+import MobileShowcase from './components/MobileShowcase';
 import FAQ from './components/FAQ';
 import Footer from './components/Footer';
 
@@ -53,13 +53,13 @@ function App() {
         {/* Hero Section – fullscreen, Navbar overlays on top */}
         <Hero />
 
-        {/* Mobile App Section (Matching Uploaded Screenshot Structure) */}
+        {/* Mobile App Section – Phone mockup with video background */}
         <MobileShowcase />
 
-        {/* About Us Section (Matching Uploaded Screenshot Cutout Layout) */}
+        {/* About Us Section */}
         <AboutUs />
 
-        {/* Steps To Lodge Section (Matching Uploaded Wavy Timeline Layout) */}
+        {/* Steps To Lodge Section – Onboarding wavy sine timeline */}
         <StepsToLodge />
 
       </main>

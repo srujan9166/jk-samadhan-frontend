@@ -1,6 +1,6 @@
 import React from 'react';
 import { Lightbulb, Mail, BarChart3, Settings } from 'lucide-react';
-import ScrollReveal from './ScrollReveal';
+import ScrollReveal, { StaggerContainer, StaggerItem, TextRevealGroup, TextRevealItem } from './ScrollReveal';
 
 export default function StepsToLodge() {
   const steps = [
@@ -46,13 +46,15 @@ export default function StepsToLodge() {
         
         {/* Title */}
         <div className="mb-16 text-left">
-          <ScrollReveal>
-            <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-gov-blue-medium dark:text-blue-400 flex items-center gap-2">
-              Steps To Lodge The Grievance
-              <span className="text-gov-saffron text-xl font-mono">»»»»»</span>
-            </h2>
-            <div className="w-16 h-1 bg-gov-saffron mt-2 rounded-full"></div>
-          </ScrollReveal>
+          <TextRevealGroup>
+            <TextRevealItem>
+              <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-gov-blue-medium dark:text-blue-400 flex items-center gap-2">
+                Steps To Lodge The Grievance
+                <span className="text-gov-saffron text-xl font-mono">»»»»»</span>
+              </h2>
+              <div className="w-16 h-1 bg-gov-saffron mt-2 rounded-full"></div>
+            </TextRevealItem>
+          </TextRevealGroup>
         </div>
 
         {/* Stepper Timeline Area */}
@@ -72,15 +74,14 @@ export default function StepsToLodge() {
           </div>
 
           {/* Steps Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
+          <StaggerContainer staggerChildren={0.15} className="grid grid-cols-1 lg:grid-cols-4 gap-8 relative z-10">
             {steps.map((step, idx) => {
               // Alternating height offsets to mimic the wave path in the screenshot on desktop
               const offsetClass = idx % 2 === 0 ? 'lg:translate-y-6' : 'lg:-translate-y-6';
 
               return (
-                <ScrollReveal 
+                <StaggerItem 
                   key={step.num}
-                  delay={idx * 150}
                   className={`flex flex-col items-center space-y-4 group transition-all duration-300 ${offsetClass}`}
                 >
                   {/* Step Node Circle */}
@@ -99,10 +100,10 @@ export default function StepsToLodge() {
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-[220px] mx-auto text-center font-semibold bg-white/70 dark:bg-slate-950/70 backdrop-blur-sm p-3 rounded-xl border border-slate-100 dark:border-slate-900 group-hover:shadow-sm transition-shadow">
                     {step.desc}
                   </p>
-                </ScrollReveal>
+                </StaggerItem>
               );
             })}
-          </div>
+          </StaggerContainer>
 
         </div>
 

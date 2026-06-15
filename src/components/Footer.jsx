@@ -1,6 +1,7 @@
 import React from 'react';
 import { Edit, Wrench, Eye, Phone, MapPin, Mail, ArrowUp } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import { StaggerContainer, StaggerItem } from './ScrollReveal';
 
 export default function Footer() {
   const handleScrollTop = () => {
@@ -27,10 +28,10 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">
+        <StaggerContainer staggerChildren={0.2} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">
           
           {/* LEFT COLUMN: Logo Box and 3 Stats Pills */}
-          <div className="lg:col-span-5 space-y-4">
+          <StaggerItem className="lg:col-span-5 space-y-4">
             
             {/* White Brand Logo Box */}
             <div className="bg-white p-3 rounded-lg flex items-center gap-3 w-fit shadow-md border border-slate-100">
@@ -69,10 +70,10 @@ export default function Footer() {
               </div>
             </div>
 
-          </div>
+          </StaggerItem>
 
           {/* RIGHT COLUMN: Contact Details */}
-          <div className="lg:col-span-7 space-y-6">
+          <StaggerItem className="lg:col-span-7 space-y-6">
             
             {/* Header: Call Contact */}
             <div className="flex items-center flex-wrap gap-2 text-base sm:text-lg font-bold">
@@ -124,9 +125,9 @@ export default function Footer() {
               <span>jk-grievance[at]jk[dot]gov[dot]in</span>
             </div>
 
-          </div>
+          </StaggerItem>
 
-        </div>
+        </StaggerContainer>
 
         {/* BOTTOM COPYRIGHT BAR */}
         <div className="border-t border-blue-900/60 pt-4 mt-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-[10px] text-slate-300">

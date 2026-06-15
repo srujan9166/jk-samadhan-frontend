@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Phone, Mail, MapPin, Send, CheckCircle2 } from 'lucide-react';
+import ScrollReveal, { StaggerContainer, StaggerItem, TextRevealGroup, TextRevealItem } from './ScrollReveal';
 
 export default function Contact() {
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -41,33 +42,41 @@ export default function Contact() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-          <span className="text-xs font-bold text-gov-blue-light uppercase tracking-widest bg-blue-50 dark:bg-slate-950 px-3.5 py-1.5 rounded-full border border-blue-100 dark:border-slate-800">
-            Support Center
-          </span>
-          <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-slate-900 dark:text-white">
-            Get in Touch
-          </h2>
-          <div className="w-16 h-1 bg-gov-saffron mx-auto rounded-full"></div>
-          <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
-            Have general queries regarding grievance procedures? Contact our support staff or write directly.
-          </p>
-        </div>
+        <TextRevealGroup className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+          <TextRevealItem>
+            <span className="text-xs font-bold text-gov-blue-light uppercase tracking-widest bg-blue-50 dark:bg-slate-950 px-3.5 py-1.5 rounded-full border border-blue-100 dark:border-slate-800">
+              Support Center
+            </span>
+          </TextRevealItem>
+          <TextRevealItem>
+            <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-slate-900 dark:text-white">
+              Get in Touch
+            </h2>
+            <div className="w-16 h-1 bg-gov-saffron mx-auto rounded-full mt-2"></div>
+          </TextRevealItem>
+          <TextRevealItem>
+            <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base leading-relaxed">
+              Have general queries regarding grievance procedures? Contact our support staff or write directly.
+            </p>
+          </TextRevealItem>
+        </TextRevealGroup>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           
           {/* Left: Contact Info */}
-          <div className="lg:col-span-5 space-y-6 text-left">
-            <div className="space-y-4">
-              <h3 className="font-display font-bold text-xl text-slate-900 dark:text-white">
-                Contact Details
-              </h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
-                Our support team handles technical and procedural inquiries. For filing grievances, please use the online lodging portal.
-              </p>
-            </div>
+          <StaggerContainer staggerChildren={0.15} className="lg:col-span-5 space-y-6 text-left">
+            <StaggerItem>
+              <div className="space-y-4">
+                <h3 className="font-display font-bold text-xl text-slate-900 dark:text-white">
+                  Contact Details
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                  Our support team handles technical and procedural inquiries. For filing grievances, please use the online lodging portal.
+                </p>
+              </div>
+            </StaggerItem>
 
-            <div className="space-y-4">
+            <StaggerItem>
               {/* Helpline */}
               <div className="bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-900 p-4 rounded-xl flex gap-4 hover:shadow-sm transition-shadow">
                 <div className="p-3 bg-amber-50 dark:bg-slate-900 rounded-lg text-gov-saffron self-start">
@@ -79,7 +88,9 @@ export default function Contact() {
                   <p className="text-[11px] text-slate-400 mt-0.5">Available 9:30 AM to 5:30 PM (Mon-Sat)</p>
                 </div>
               </div>
+            </StaggerItem>
 
+            <StaggerItem>
               {/* Email */}
               <div className="bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-900 p-4 rounded-xl flex gap-4 hover:shadow-sm transition-shadow">
                 <div className="p-3 bg-blue-50 dark:bg-slate-900 rounded-lg text-gov-blue-light self-start">
@@ -93,7 +104,9 @@ export default function Contact() {
                   <p className="text-[11px] text-slate-400 mt-0.5">Response within 24-48 working hours</p>
                 </div>
               </div>
+            </StaggerItem>
 
+            <StaggerItem>
               {/* Addresses */}
               <div className="bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-900 p-4 rounded-xl flex gap-4 hover:shadow-sm transition-shadow">
                 <div className="p-3 bg-emerald-50 dark:bg-slate-900 rounded-lg text-gov-green self-start">
@@ -110,11 +123,11 @@ export default function Contact() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </StaggerItem>
+          </StaggerContainer>
 
           {/* Right: Contact Form */}
-          <div className="lg:col-span-7">
+          <ScrollReveal delay={200} className="lg:col-span-7">
             <div className="bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-900 rounded-2xl p-6 md:p-8 shadow-sm">
               {!formSubmitted ? (
                 <form onSubmit={handleSubmit} className="space-y-4 text-left">
@@ -195,7 +208,7 @@ export default function Contact() {
                 </div>
               )}
             </div>
-          </div>
+          </ScrollReveal>
 
         </div>
       </div>

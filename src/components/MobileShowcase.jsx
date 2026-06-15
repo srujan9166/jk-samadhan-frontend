@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Smartphone, Download, CheckCircle, Info, ChevronRight, Apple, Play } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import mobileBgVideo from '../assets/jk_mobile_section.mp4';
-import ScrollReveal from './ScrollReveal';
+import ScrollReveal, { StaggerContainer, StaggerItem, TextRevealGroup, TextRevealItem } from './ScrollReveal';
 
 export default function MobileShowcase() {
   const [activeTab, setActiveTab] = useState('splash');
@@ -37,79 +37,84 @@ export default function MobileShowcase() {
         
         {/* Title */}
         <div className="mb-12">
-          <ScrollReveal>
-            <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white flex items-center gap-2">
-              Visit our Mobile Application
-              <span className="text-[#13b183] text-xl font-mono">»»»»»</span>
-            </h2>
-            <div className="w-16 h-1 bg-[#13b183] mt-2 rounded-full"></div>
-          </ScrollReveal>
+          <TextRevealGroup>
+            <TextRevealItem>
+              <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-white flex items-center gap-2">
+                Visit our Mobile Application
+                <span className="text-[#13b183] text-xl font-mono">»»»»»</span>
+              </h2>
+              <div className="w-16 h-1 bg-[#13b183] mt-2 rounded-full"></div>
+            </TextRevealItem>
+          </TextRevealGroup>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
           {/* Left Column: Download & Selection Tabs */}
-          <ScrollReveal className="lg:col-span-7 space-y-8">
+          <StaggerContainer className="lg:col-span-7 space-y-8">
             
             {/* Download Card */}
-            <div className="bg-gradient-to-r from-blue-600 to-fuchsia-600 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-              <div className="space-y-1 z-10">
-                <h3 className="font-display font-extrabold text-lg sm:text-xl">Download Our App</h3>
-                <p className="text-xs text-white/80 max-w-sm">
-                  Get the JK Samadhan & JK Raabita app for quick grievance lodging and offline tracking directly on your mobile device.
-                </p>
-              </div>
+            <StaggerItem>
+              <div className="bg-gradient-to-r from-blue-600 to-fuchsia-600 text-white rounded-2xl p-6 shadow-lg relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                <div className="space-y-1 z-10">
+                  <h3 className="font-display font-extrabold text-lg sm:text-xl">Download Our App</h3>
+                  <p className="text-xs text-white/80 max-w-sm">
+                    Get the JK Samadhan & JK Raabita app for quick grievance lodging and offline tracking directly on your mobile device.
+                  </p>
+                </div>
 
-              {/* App Badge Buttons */}
-              <div className="flex gap-2.5 z-10 w-full sm:w-auto">
-                <a 
-                  href="#" 
-                  className="flex-1 sm:flex-initial bg-black hover:bg-black/90 px-3.5 py-2 rounded-lg flex items-center gap-2 text-white border border-white/10 transition-all text-left"
-                >
-                  <Apple className="h-5 w-5 fill-current" />
-                  <div>
-                    <span className="text-[9px] text-slate-400 block uppercase font-semibold">Download on the</span>
-                    <span className="text-xs font-bold font-sans tracking-tight block -mt-0.5">App Store</span>
-                  </div>
-                </a>
-                <a 
-                  href="#" 
-                  className="flex-1 sm:flex-initial bg-black hover:bg-black/90 px-3.5 py-2 rounded-lg flex items-center gap-2 text-white border border-white/10 transition-all text-left"
-                >
-                  <Play className="h-5 w-5 fill-current" />
-                  <div>
-                    <span className="text-[9px] text-slate-400 block uppercase font-semibold">GET IT ON</span>
-                    <span className="text-xs font-bold font-sans tracking-tight block -mt-0.5">Google Play</span>
-                  </div>
-                </a>
+                {/* App Badge Buttons */}
+                <div className="flex gap-2.5 z-10 w-full sm:w-auto">
+                  <a 
+                    href="#" 
+                    className="flex-1 sm:flex-initial bg-black hover:bg-black/90 px-3.5 py-2 rounded-lg flex items-center gap-2 text-white border border-white/10 transition-all text-left"
+                  >
+                    <Apple className="h-5 w-5 fill-current" />
+                    <div>
+                      <span className="text-[9px] text-slate-400 block uppercase font-semibold">Download on the</span>
+                      <span className="text-xs font-bold font-sans tracking-tight block -mt-0.5">App Store</span>
+                    </div>
+                  </a>
+                  <a 
+                    href="#" 
+                    className="flex-1 sm:flex-initial bg-black hover:bg-black/90 px-3.5 py-2 rounded-lg flex items-center gap-2 text-white border border-white/10 transition-all text-left"
+                  >
+                    <Play className="h-5 w-5 fill-current" />
+                    <div>
+                      <span className="text-[9px] text-slate-400 block uppercase font-semibold">GET IT ON</span>
+                      <span className="text-xs font-bold font-sans tracking-tight block -mt-0.5">Google Play</span>
+                    </div>
+                  </a>
+                </div>
               </div>
-            </div>
+            </StaggerItem>
 
             {/* Selection Buttons */}
             <div className="space-y-3">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center ${
-                      isActive
-                        ? 'bg-[#0c408f]/80 border-[#13b183] text-white shadow-md backdrop-blur-sm'
-                        : 'bg-white/8 border-white/15 text-white/80 hover:border-white/30 hover:bg-white/12 backdrop-blur-sm'
-                    }`}
-                  >
-                    <span className="font-semibold text-xs sm:text-sm pr-4">{tab.label}</span>
-                    <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? 'rotate-90 text-[#13b183]' : 'text-white/40'}`} />
-                  </button>
+                  <StaggerItem key={tab.id}>
+                    <button
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-center ${
+                        isActive
+                          ? 'bg-[#0c408f]/80 border-[#13b183] text-white shadow-md backdrop-blur-sm'
+                          : 'bg-white/8 border-white/15 text-white/80 hover:border-white/30 hover:bg-white/12 backdrop-blur-sm'
+                      }`}
+                    >
+                      <span className="font-semibold text-xs sm:text-sm pr-4">{tab.label}</span>
+                      <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? 'rotate-90 text-[#13b183]' : 'text-white/40'}`} />
+                    </button>
+                  </StaggerItem>
                 );
               })}
             </div>
 
-          </ScrollReveal>
+          </StaggerContainer>
 
           {/* Right Column: Phone Mockup Frame */}
-          <ScrollReveal delay={250} className="lg:col-span-5 flex justify-center">
+          <ScrollReveal delay={0.2} className="lg:col-span-5 flex justify-center">
             <div className="relative w-[280px] h-[560px] bg-slate-950 rounded-[40px] p-3 shadow-2xl border-4 border-slate-800 flex flex-col overflow-hidden">
               
               {/* Phone Speaker Notch */}

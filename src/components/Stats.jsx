@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layers, FileText, CheckCircle, HeartHandshake } from 'lucide-react';
+import { StaggerContainer, StaggerItem } from './ScrollReveal';
 
 export default function Stats() {
   const [grievances, setGrievances] = useState(0);
@@ -81,13 +82,16 @@ export default function Stats() {
   return (
     <section id="about" className="py-12 bg-white dark:bg-slate-950 border-y border-slate-100 dark:border-slate-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+        <StaggerContainer staggerChildren={0.12} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           
           {statItems.map((item) => (
-            <div 
+            <StaggerItem 
               key={item.id}
-              className={`bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-900 rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg flex flex-col justify-between relative overflow-hidden ${item.borderClass}`}
+              className="h-full"
             >
+              <div 
+                className={`h-full bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-900 rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg flex flex-col justify-between relative overflow-hidden ${item.borderClass}`}
+              >
               {/* Background Accent Gradient */}
               <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl ${item.colorClass} rounded-full pointer-events-none`}></div>
               
@@ -124,10 +128,11 @@ export default function Stats() {
                 ></div>
               </div>
 
-            </div>
+              </div>
+            </StaggerItem>
           ))}
 
-        </div>
+        </StaggerContainer>
       </div>
     </section>
   );

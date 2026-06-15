@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import jkVideo1 from '../assets/jk video.mp4';
+import { StaggerContainer, StaggerItem } from './ScrollReveal';
 import jkVideo2 from '../assets/jk_video2.mp4';
-import jkVideo5 from '../assets/jk_video5.mp4';
 
-const VIDEOS = [jkVideo1, jkVideo2, jkVideo5];
+const VIDEOS = [jkVideo2];
 const SLIDE_DURATION = 8000; // ms per slide
 
 // FIX #6: Constant outside component — stable reference, no re-creation on render
@@ -32,7 +31,7 @@ export default function Hero() {
         const scrollY = window.scrollY;
         if (contentRef.current) {
           contentRef.current.style.transform = `translateY(${scrollY * 0.15}px)`;
-          contentRef.current.style.opacity = String(Math.max(0, 1 - scrollY / 600));
+          contentRef.current.style.opacity = String(Math.min(1, Math.max(0, 1 - scrollY / 600)));
         }
       });
     };
@@ -187,120 +186,92 @@ export default function Hero() {
           paddingTop: '130px',
           paddingBottom: '70px',
           willChange: 'transform, opacity',
-          transition: 'opacity 0.1s ease-out',
         }}
       >
-        <p
-          className="hero-animate-in text-white/80 font-semibold text-lg sm:text-2xl md:text-3xl uppercase tracking-[0.25em] mb-3"
-          style={{ textShadow: '0 2px 20px rgba(0,0,0,0.7)', animationDelay: '0.15s' }}
-        >
-          Welcome To
-        </p>
+        <StaggerContainer staggerChildren={0.15} className="flex flex-col items-center justify-center">
+          <StaggerItem duration={0.9} y={40}>
+            <p
+              className="text-white/80 font-semibold text-lg sm:text-2xl md:text-3xl uppercase tracking-[0.25em] mb-3"
+              style={{ textShadow: '0 2px 20px rgba(0,0,0,0.7)' }}
+            >
+              Welcome To
+            </p>
+          </StaggerItem>
 
-        <h1
-          className="hero-animate-in font-display font-black text-white leading-none tracking-tight mb-5"
-          style={{
-            fontSize: 'clamp(2.8rem, 7vw, 6.5rem)',
-            textShadow: '0 4px 40px rgba(0,0,0,0.7)',
-            animationDelay: '0.3s',
-          }}
-        >
-          JK <span className="text-[#13b183]">Samadhan</span>
-        </h1>
+          <StaggerItem duration={1.0} y={50}>
+            <h1
+              className="font-display font-black text-white leading-none tracking-tight mb-5"
+              style={{
+                fontSize: 'clamp(2.8rem, 7vw, 6.5rem)',
+                textShadow: '0 4px 40px rgba(0,0,0,0.7)',
+              }}
+            >
+              JK <span className="text-[#13b183]">Samadhan</span>
+            </h1>
+          </StaggerItem>
 
-        <p
-          className="hero-animate-in text-white/70 font-medium text-sm sm:text-base md:text-lg tracking-widest uppercase"
-          style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)', animationDelay: '0.45s' }}
-        >
-          Government of Jammu &amp; Kashmir
-        </p>
+          <StaggerItem duration={1.1} y={30}>
+            <p
+              className="text-white/70 font-medium text-sm sm:text-base md:text-lg tracking-widest uppercase"
+              style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)' }}
+            >
+              Government of Jammu &amp; Kashmir
+            </p>
+          </StaggerItem>
+        </StaggerContainer>
       </div>
 
-      {/* ── Prev / Next Arrows ── */}
-      {/* FIX #9: disabled during transition for clear feedback */}
-      <button
-        onClick={handlePrev}
-        disabled={transitioning}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 border border-white/20 text-white backdrop-blur-sm transition-all duration-300 hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-        aria-label="Previous video"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2.5}
-          stroke="currentColor"
-          className="w-4 h-4"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-        </svg>
-      </button>
-      <button
-        onClick={handleNext}
-        disabled={transitioning}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/25 border border-white/20 text-white backdrop-blur-sm transition-all duration-300 hover:scale-110 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-        aria-label="Next video"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2.5}
-          stroke="currentColor"
-          className="w-4 h-4"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-        </svg>
-      </button>
 
       {/* ── Dot Indicators ── */}
-      <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5">
-        {VIDEOS.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => handleDot(i)}
-            disabled={transitioning}
-            className="group relative flex items-center justify-center disabled:cursor-not-allowed"
-            aria-label={`Go to slide ${i + 1}`}
-            // FIX #10: Screen readers know which slide is active
-            aria-current={i === current ? 'true' : undefined}
-          >
-            {i === current && (
-              <svg className="absolute w-5 h-5 -rotate-90" viewBox="0 0 20 20">
-                <circle
-                  cx="10"
-                  cy="10"
-                  r="8"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.25)"
-                  strokeWidth="1.5"
-                />
-                <circle
-                  // FIX #2: key={current} forces remount so animation restarts each slide
-                  key={current}
-                  cx="10"
-                  cy="10"
-                  r="8"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="1.5"
-                  strokeDasharray={`${2 * Math.PI * 8}`}
-                  strokeDashoffset={`${2 * Math.PI * 8}`}
-                  strokeLinecap="round"
-                  style={{ animation: `dotProgress ${SLIDE_DURATION}ms linear forwards` }}
-                />
-              </svg>
-            )}
-            <span
-              className={`block rounded-full transition-all duration-300 ${ // FIX #3: duration-300 (valid Tailwind)
-                i === current
-                  ? 'w-2.5 h-2.5 bg-white'
-                  : 'w-1.5 h-1.5 bg-white/45 hover:bg-white/70'
-                }`}
-            />
-          </button>
-        ))}
-      </div>
+      {VIDEOS.length > 1 && (
+        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5">
+          {VIDEOS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => handleDot(i)}
+              disabled={transitioning}
+              className="group relative flex items-center justify-center disabled:cursor-not-allowed"
+              aria-label={`Go to slide ${i + 1}`}
+              // FIX #10: Screen readers know which slide is active
+              aria-current={i === current ? 'true' : undefined}
+            >
+              {i === current && (
+                <svg className="absolute w-5 h-5 -rotate-90" viewBox="0 0 20 20">
+                  <circle
+                    cx="10"
+                    cy="10"
+                    r="8"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.25)"
+                    strokeWidth="1.5"
+                  />
+                  <circle
+                    // FIX #2: key={current} forces remount so animation restarts each slide
+                    key={current}
+                    cx="10"
+                    cy="10"
+                    r="8"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="1.5"
+                    strokeDasharray={`${2 * Math.PI * 8}`}
+                    strokeDashoffset={`${2 * Math.PI * 8}`}
+                    strokeLinecap="round"
+                    style={{ animation: `dotProgress ${SLIDE_DURATION}ms linear forwards` }}
+                  />
+                </svg>
+              )}
+              <span
+                className={`block rounded-full transition-all duration-300 ${ // FIX #3: duration-300 (valid Tailwind)
+                  i === current
+                    ? 'w-2.5 h-2.5 bg-white'
+                    : 'w-1.5 h-1.5 bg-white/45 hover:bg-white/70'
+                  }`}
+              />
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Bottom ticker bar ── */}
       <div

@@ -14,19 +14,30 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
   const [grievanceOpen, setGrievanceOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [prefOpen, setPrefOpen] = useState(false);
 
   useEffect(() => {
+    let lastState = false;
     const handleScroll = () => {
-      if (window.scrollY > 40) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
+      const sy = window.scrollY;
+      let isScrolled = lastState;
+      if (sy > 60) {
+        isScrolled = true;
+      } else if (sy < 15) {
+        isScrolled = false;
       }
-      // Close all dropdowns on scroll
-      setGrievanceOpen(false);
-      setSupportOpen(false);
-      setLoginOpen(false);
-      setIsOpen(false);
+      
+      if (isScrolled !== lastState) {
+        lastState = isScrolled;
+        setScrolled(isScrolled);
+      }
+      
+      // Conditionally close dropdowns only if they are open
+      setGrievanceOpen(prev => prev ? false : prev);
+      setSupportOpen(prev => prev ? false : prev);
+      setLoginOpen(prev => prev ? false : prev);
+      setIsOpen(prev => prev ? false : prev);
+      setPrefOpen(prev => prev ? false : prev);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
@@ -74,7 +85,7 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
       </div>
 
       {/* 1. TOP UTILITY ROW */}
-      <div className={`transition-all duration-150 py-2 px-5 sm:px-8 lg:px-10 flex justify-between items-center ${
+      <div className={`relative z-20 transition-all duration-150 py-2 px-5 sm:px-8 lg:px-10 flex justify-between items-center ${
         scrolled
           ? 'bg-white/98 dark:bg-slate-950 backdrop-blur-xl'
           : 'bg-black/30 backdrop-blur-xl'
@@ -144,77 +155,115 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
         {/* ── RIGHT: Controls ── */}
         <div className="flex items-center gap-2">
 
-          {/* LMS Videos */}
-          <button className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider transition-all duration-300 cursor-pointer border ${
-            scrolled
-              ? 'bg-slate-900 hover:bg-slate-700 text-white border-slate-700'
-              : 'bg-white/10 hover:bg-white/18 text-white border-white/20 backdrop-blur-sm'
-          }`}
-            style={{ fontFamily: "'Cinzel', Georgia, serif" }}
-          >
-            <span className="w-4 h-4 flex items-center justify-center rounded-full bg-red-500 group-hover:scale-110 transition-transform">
-              <Play className="h-2 w-2 fill-white text-white" />
-            </span>
-            <span>LMS</span>
-            <ChevronDown className="h-3 w-3 opacity-60" />
-          </button>
+          {/* Unified Preference & Accessibility Option */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setPrefOpen(!prefOpen);
+                setGrievanceOpen(false);
+                setSupportOpen(false);
+                setLoginOpen(false);
+              }}
+              className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-wider transition-all duration-300 cursor-pointer border ${
+                scrolled
+                  ? 'bg-slate-900 hover:bg-slate-800 text-white border-slate-700'
+                  : 'bg-white/10 hover:bg-white/18 text-white border-white/20 backdrop-blur-sm'
+              } ${prefOpen ? 'ring-2 ring-emerald-500/50' : ''}`}
+              style={{ fontFamily: "'Cinzel', Georgia, serif" }}
+            >
+              <Accessibility className="h-3.5 w-3.5 text-white group-hover:rotate-12 transition-transform duration-300" />
+              <span>Accessibility &amp; Tools</span>
+              <ChevronDown className={`h-3 w-3 opacity-60 transition-transform duration-300 ${prefOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-          {/* Language */}
-          <div className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[10px] font-bold text-white tracking-wider transition-all duration-300 ${
-            scrolled ? 'bg-slate-900 border-slate-700' : 'bg-white/10 border-white/20 backdrop-blur-sm'
-          }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>
-            <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
-            </svg>
-            <select className="bg-transparent outline-none border-none cursor-pointer text-white text-[10px] font-bold" style={{ fontFamily: "'Cinzel', Georgia, serif" }}>
-              <option value="en" className="text-black">EN</option>
-              <option value="hi" className="text-black">HI</option>
-              <option value="ur" className="text-black">UR</option>
-            </select>
+            {/* Dropdown Card */}
+            <div className={`absolute right-0 top-full mt-2 w-72 rounded-xl bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/60 shadow-2xl z-50 p-4 transition-all duration-300 transform ${
+              prefOpen
+                ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto visible'
+                : 'opacity-0 -translate-y-2 scale-95 pointer-events-none invisible'
+            }`}>
+              <div className="flex flex-col gap-4">
+                
+                {/* Title */}
+                <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-900 pb-2">
+                  Preferences &amp; Tools
+                </div>
+
+                {/* Grid of options */}
+                <div className="flex flex-col gap-3">
+                  
+                  {/* LMS & Language */}
+                  <div className="flex items-center gap-2">
+                    
+                    {/* LMS Button */}
+                    <button className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold tracking-wider transition-all duration-200 cursor-pointer border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                      style={{ fontFamily: "'Cinzel', Georgia, serif" }}
+                    >
+                      <span className="w-3.5 h-3.5 flex items-center justify-center rounded-full bg-red-500">
+                        <Play className="h-1.5 w-1.5 fill-white text-white" />
+                      </span>
+                      <span>LMS</span>
+                    </button>
+
+                    {/* Language Dropdown */}
+                    <div className="flex-1 flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-[10px] font-bold text-slate-700 dark:text-slate-300 tracking-wider">
+                      <svg className="w-3.5 h-3.5 opacity-70 text-slate-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                      </svg>
+                      <select className="bg-transparent outline-none border-none cursor-pointer text-slate-700 dark:text-slate-300 text-[10px] font-bold" style={{ fontFamily: "'Cinzel', Georgia, serif" }}>
+                        <option value="en" className="text-black dark:text-white dark:bg-slate-800">EN</option>
+                        <option value="hi" className="text-black dark:text-white dark:bg-slate-800">HI</option>
+                        <option value="ur" className="text-black dark:text-white dark:bg-slate-800">UR</option>
+                      </select>
+                    </div>
+
+                  </div>
+
+                  {/* Size Changer & Theme Changer */}
+                  <div className="flex items-center gap-2">
+                    
+                    {/* Size Increaser (Accessibility) */}
+                    <button
+                      onClick={() => setFontSize(fontSize === 'base' ? 'lg' : fontSize === 'lg' ? 'sm' : 'base')}
+                      className="flex-1 p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-all duration-200 cursor-pointer hover:scale-105 flex justify-center items-center gap-1.5"
+                      title="Change Text Size">
+                      <Accessibility className="h-3.5 w-3.5" />
+                      <span className="text-[10px] font-black" style={{ fontFamily: "'Cinzel', Georgia, serif" }}>
+                        {fontSize === 'sm' ? 'A-' : fontSize === 'base' ? 'A' : 'A+'}
+                      </span>
+                    </button>
+
+                    {/* Theme Changer */}
+                    <button
+                      onClick={toggleTheme}
+                      className="flex-1 p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-all duration-200 cursor-pointer hover:scale-105 flex justify-center items-center gap-1.5"
+                      title="Toggle Theme">
+                      {theme === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5 text-amber-400" />}
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ fontFamily: "'Cinzel', Georgia, serif" }}>
+                        {theme === 'light' ? 'Dark' : 'Light'}
+                      </span>
+                    </button>
+
+                  </div>
+
+                  {/* Screen Reader Row */}
+                  <button className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-transparent font-bold tracking-wider text-[10px] transition-all duration-200 cursor-pointer hover:scale-[1.02] bg-[#13b183] hover:bg-[#109a72] text-white" style={{ fontFamily: "'Cinzel', Georgia, serif" }}>
+                    <Volume2 className="h-3.5 w-3.5 text-white" />
+                    <span>Audio Reader</span>
+                  </button>
+
+                </div>
+
+              </div>
+            </div>
           </div>
-
-          {/* Separator */}
-          <div className={`hidden sm:block w-px h-6 ${ scrolled ? 'bg-slate-200' : 'bg-white/20' }`} />
-
-          {/* Accessibility */}
-          <button
-            onClick={() => setFontSize(fontSize === 'base' ? 'lg' : fontSize === 'lg' ? 'sm' : 'base')}
-            className={`p-2 rounded-lg border transition-all duration-300 cursor-pointer hover:scale-105 ${
-              scrolled ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white'
-            }`}
-            title="Accessibility">
-            <Accessibility className="h-3.5 w-3.5" />
-          </button>
-
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className={`p-2 rounded-lg border transition-all duration-300 cursor-pointer hover:scale-105 ${
-              scrolled ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700' : 'bg-white/10 hover:bg-white/20 border-white/20 text-white'
-            }`}
-            title="Toggle Theme">
-            {theme === 'light' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5 text-amber-400" />}
-          </button>
-
-          {/* Separator */}
-          <div className={`hidden sm:block w-px h-6 ${ scrolled ? 'bg-slate-200' : 'bg-white/20' }`} />
-
-          {/* Screen Reader — Accent pill */}
-          <button className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border font-bold tracking-wider text-[10px] transition-all duration-300 cursor-pointer hover:scale-105 ${
-            scrolled
-              ? 'bg-[#0c408f] hover:bg-[#0a3272] border-[#0c408f] text-white'
-              : 'bg-[#13b183]/25 hover:bg-[#13b183]/40 border-[#13b183]/50 text-white backdrop-blur-sm'
-          }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>
-            <Volume2 className={`h-3.5 w-3.5 ${ scrolled ? 'text-amber-300' : 'text-[#13b183]' }`} />
-            <span className="hidden sm:inline">Screen Reader</span>
-          </button>
 
         </div>
 
       </div>
 
       {/* 2. BOTTOM NAVIGATION ROW */}
-      <nav className={`w-full transition-all duration-150 py-3.5 ${
+      <nav className={`relative z-10 w-full transition-all duration-150 py-3.5 ${
         scrolled
           ? 'bg-white dark:bg-slate-950'
           : 'bg-transparent'
@@ -300,43 +349,47 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
           {/* Spacer so flex justify-between keeps action buttons right */}
           <div className="hidden lg:block invisible" style={{ fontFamily: "'Cinzel', serif", fontSize: '11px' }}>Home About Contact Us Grievance Help</div>
 
-          {/* Right Action buttons: CPGRAMS, Registration, Login */}
-          <div className="hidden sm:flex items-center gap-2">
+          {/* Right Action buttons: Pill-style container containing CPGRAMS, Register, Login */}
+          <div className={`hidden sm:flex items-center gap-1.5 p-1 rounded-full border transition-all duration-300 ${
+            scrolled
+              ? 'bg-slate-100/85 border-slate-200/60 dark:bg-slate-900/85 dark:border-slate-800/60'
+              : 'bg-white/10 border-white/20 backdrop-blur-md'
+          }`}>
 
-            {/* CPGRAMS — outlined glass-crimson */}
+            {/* CPGRAMS button */}
             <button
               onClick={() => window.open('https://pgportal.gov.in', '_blank')}
-              className={`px-4 py-1.5 text-[11px] font-bold rounded-lg border transition-all duration-300 cursor-pointer tracking-widest ${
+              className={`px-4 py-1.5 text-[11px] font-bold rounded-full transition-all duration-200 cursor-pointer tracking-wider ${
                 scrolled
-                  ? 'bg-transparent border-rose-700 text-rose-700 hover:bg-rose-700 hover:text-white'
-                  : 'bg-rose-600/20 border-rose-300/60 text-white hover:bg-rose-600/50 backdrop-blur-sm'
+                  ? 'text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
+                  : 'text-white/85 hover:text-white hover:bg-white/15'
               }`}
               style={{ fontFamily: "'Cinzel', Georgia, serif" }}
             >
               CPGRAMS
             </button>
 
-            {/* Registration — outlined glass-emerald */}
+            {/* Registration button */}
             <button
               onClick={() => onAuthClick('register')}
-              className={`px-4 py-1.5 text-[11px] font-bold rounded-lg border transition-all duration-300 cursor-pointer tracking-widest ${
+              className={`px-4 py-1.5 text-[11px] font-bold rounded-full transition-all duration-200 cursor-pointer tracking-wider ${
                 scrolled
-                  ? 'bg-transparent border-emerald-600 text-emerald-700 hover:bg-emerald-600 hover:text-white'
-                  : 'bg-emerald-500/20 border-emerald-300/60 text-white hover:bg-emerald-500/50 backdrop-blur-sm'
+                  ? 'text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
+                  : 'text-white/85 hover:text-white hover:bg-white/15'
               }`}
               style={{ fontFamily: "'Cinzel', Georgia, serif" }}
             >
               Register
             </button>
 
-            {/* Login Dropdown — filled glass-gold */}
+            {/* Login Dropdown button */}
             <div className="relative">
               <button
                 onClick={() => { setLoginOpen(!loginOpen); setGrievanceOpen(false); setSupportOpen(false); }}
-                className={`px-4 py-1.5 text-[11px] font-bold rounded-lg border flex items-center gap-1 transition-all duration-300 cursor-pointer tracking-widest ${
+                className={`px-4 py-1.5 text-[11px] font-bold rounded-full flex items-center gap-1 transition-all duration-300 cursor-pointer tracking-wider shadow-sm ${
                   scrolled
-                    ? 'bg-[#0c408f] border-[#0c408f] text-white hover:bg-[#0a3272]'
-                    : 'bg-white/20 border-white/40 text-white hover:bg-white/35 backdrop-blur-sm'
+                    ? 'bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100'
+                    : 'bg-white text-slate-950 hover:bg-white/90 dark:bg-slate-950 dark:text-white dark:hover:bg-slate-800'
                 }`}
                 style={{ fontFamily: "'Cinzel', Georgia, serif" }}
               >
