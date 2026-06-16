@@ -16,13 +16,15 @@ import './App.css';
 
 function App() {
   const [isGrievanceOpen, setIsGrievanceOpen] = useState(false);
+  const [grievanceModalMode, setGrievanceModalMode] = useState('grievance'); // 'grievance' or 'appeal'
   const [isTrackOpen, setIsTrackOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [trackRefCode, setTrackRefCode] = useState('');
 
-  const handleLodgeGrievance = () => {
+  const handleLodgeGrievance = (mode = 'grievance') => {
+    setGrievanceModalMode(mode);
     setIsGrievanceOpen(true);
   };
 
@@ -41,7 +43,8 @@ function App() {
       
       {/* Sticky Header */}
       <Navbar 
-        onLodgeClick={handleLodgeGrievance} 
+        onLodgeClick={() => handleLodgeGrievance('grievance')} 
+        onAppealClick={() => handleLodgeGrievance('appeal')}
         onTrackClick={() => handleTrackStatus('')}
         onAuthClick={handleOpenAuth}
         onFaqClick={() => setIsFaqOpen(true)}
@@ -71,6 +74,7 @@ function App() {
       <GrievanceModal 
         isOpen={isGrievanceOpen} 
         onClose={() => setIsGrievanceOpen(false)} 
+        mode={grievanceModalMode}
       />
       
       <TrackModal 

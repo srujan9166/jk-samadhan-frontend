@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, FileText, User, Mail, Phone, MapPin, Building, ChevronRight, ChevronLeft, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
 
-export default function GrievanceModal({ isOpen, onClose }) {
+export default function GrievanceModal({ isOpen, onClose, mode = 'grievance' }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -13,6 +13,7 @@ export default function GrievanceModal({ isOpen, onClose }) {
     category: '',
     subject: '',
     description: '',
+    prevRefNum: '',
     isUrgent: false,
     agreeToTerms: false
   });
@@ -31,6 +32,7 @@ export default function GrievanceModal({ isOpen, onClose }) {
         category: '',
         subject: '',
         description: '',
+        prevRefNum: '',
         isUrgent: false,
         agreeToTerms: false
       });
@@ -86,13 +88,20 @@ export default function GrievanceModal({ isOpen, onClose }) {
       if (!formData.district) newErrors.district = 'Please select a district';
       if (!formData.address.trim()) newErrors.address = 'Address is required';
     } else if (currentStep === 2) {
+      if (mode === 'appeal') {
+        if (!formData.prevRefNum.trim()) {
+          newErrors.prevRefNum = 'Original Grievance Reference Number is required for filing an appeal';
+        } else if (!/^JK-\d{6}-\d{4}$/i.test(formData.prevRefNum.trim())) {
+          newErrors.prevRefNum = 'Enter a valid Grievance Reference Number (e.g. JK-123456-2026)';
+        }
+      }
       if (!formData.department) newErrors.department = 'Please select a department';
       if (!formData.category) newErrors.category = 'Please select a category';
       if (!formData.subject.trim()) newErrors.subject = 'Subject is required';
       if (!formData.description.trim()) {
         newErrors.description = 'Description is required';
       } else if (formData.description.length < 20) {
-        newErrors.description = 'Please describe your grievance in at least 20 characters';
+        newErrors.description = 'Please describe your concern in at least 20 characters';
       }
     } else if (currentStep === 3) {
       if (!formData.agreeToTerms) newErrors.agreeToTerms = 'You must declare the information is true';
@@ -115,7 +124,8 @@ export default function GrievanceModal({ isOpen, onClose }) {
     e.preventDefault();
     if (validateStep(3)) {
       // Simulate API submission
-      const randomRef = 'JK-' + Math.floor(100000 + Math.random() * 900000) + '-' + new Date().getFullYear();
+      const prefix = mode === 'appeal' ? 'JK-APL' : 'JK';
+      const randomRef = prefix + '-' + Math.floor(100000 + Math.random() * 900000) + '-' + new Date().getFullYear();
       setRefNum(randomRef);
       setStep(4);
     }
@@ -132,6 +142,7 @@ export default function GrievanceModal({ isOpen, onClose }) {
       category: '',
       subject: '',
       description: '',
+      prevRefNum: '',
       isUrgent: false,
       agreeToTerms: false
     });
@@ -156,8 +167,14 @@ export default function GrievanceModal({ isOpen, onClose }) {
           <div className="flex items-center gap-3 mt-1">
             <FileText className="h-6 w-6 text-gov-saffron" />
             <div>
-              <h3 className="font-display font-semibold text-lg">Lodge Public Grievance</h3>
-              <p className="text-xs text-slate-300">Submit your concern directly to the respective department</p>
+              <h3 className="font-display font-semibold text-lg">
+                {mode === 'appeal' ? 'Lodge Public Appeal' : 'Lodge Public Grievance'}
+              </h3>
+              <p className="text-xs text-slate-300">
+                {mode === 'appeal' 
+                  ? 'Submit your administrative appeal against a resolved grievance response'
+                  : 'Submit your concern directly to the respective department'}
+              </p>
             </div>
           </div>
           <button 
@@ -178,7 +195,7 @@ export default function GrievanceModal({ isOpen, onClose }) {
             </div>
             <div className={`flex items-center gap-1.5 ${step >= 2 ? 'text-gov-blue-medium font-bold' : ''}`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? 'bg-gov-blue-medium text-white' : 'bg-slate-200'}`}>2</span>
-              Grievance Details
+              {mode === 'appeal' ? 'Appeal Details' : 'Grievance Details'}
             </div>
             <div className={`flex items-center gap-1.5 ${step >= 3 ? 'text-gov-blue-medium font-bold' : ''}`}>
               <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 3 ? 'bg-gov-blue-medium text-white' : 'bg-slate-200'}`}>3</span>
@@ -188,7 +205,7 @@ export default function GrievanceModal({ isOpen, onClose }) {
         )}
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-6 overflow-y-auto flex-1 text-left">
           {step === 1 && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -272,6 +289,20 @@ export default function GrievanceModal({ isOpen, onClose }) {
 
           {step === 2 && (
             <div className="space-y-4">
+              {mode === 'appeal' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Original Grievance Reference Number *</label>
+                  <input 
+                    type="text" 
+                    value={formData.prevRefNum}
+                    onChange={(e) => setFormData({...formData, prevRefNum: e.target.value})}
+                    className={`w-full rounded-lg border ${errors.prevRefNum ? 'border-red-500 bg-red-50/20' : 'border-slate-300 focus:border-gov-blue-medium'} px-3 py-2 text-sm outline-none transition-all font-mono`}
+                    placeholder="e.g. JK-482019-2026" 
+                  />
+                  {errors.prevRefNum && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.prevRefNum}</p>}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Department *</label>
@@ -290,7 +321,9 @@ export default function GrievanceModal({ isOpen, onClose }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Grievance Category *</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    {mode === 'appeal' ? 'Appeal Category *' : 'Grievance Category *'}
+                  </label>
                   <select
                     value={formData.category}
                     disabled={!formData.department}
@@ -307,24 +340,30 @@ export default function GrievanceModal({ isOpen, onClose }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Subject / Gist of Grievance *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  {mode === 'appeal' ? 'Subject / Gist of Appeal *' : 'Subject / Gist of Grievance *'}
+                </label>
                 <input 
                   type="text" 
                   value={formData.subject}
                   onChange={(e) => setFormData({...formData, subject: e.target.value})}
                   className={`w-full rounded-lg border ${errors.subject ? 'border-red-500 bg-red-50/20' : 'border-slate-300 focus:border-gov-blue-medium'} px-3 py-2 text-sm outline-none transition-all`}
-                  placeholder="Summarize your problem in a line (e.g. Water shortage in ward 4)" 
+                  placeholder={mode === 'appeal' ? "Summarize your appeal in a line" : "Summarize your problem in a line (e.g. Water shortage in ward 4)"}
                 />
                 {errors.subject && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.subject}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Detailed Description *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  {mode === 'appeal' ? 'Reason for Appeal / Detailed Description *' : 'Detailed Description *'}
+                </label>
                 <textarea 
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   className={`w-full rounded-lg border ${errors.description ? 'border-red-500 bg-red-50/20' : 'border-slate-300 focus:border-gov-blue-medium'} px-3 py-3 text-sm outline-none transition-all min-h-[120px]`}
-                  placeholder="Provide complete details including historical context, exact location, and previous actions taken, if any."
+                  placeholder={mode === 'appeal' 
+                    ? "Provide complete details of why the previous resolution is unsatisfactory and what outcomes you expect from the appellate authority."
+                    : "Provide complete details including historical context, exact location, and previous actions taken, if any."}
                 />
                 {errors.description && <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {errors.description}</p>}
               </div>
@@ -347,12 +386,17 @@ export default function GrievanceModal({ isOpen, onClose }) {
           {step === 3 && (
             <div className="space-y-4">
               <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 text-sm">
-                <h4 className="font-semibold text-gov-blue border-b border-slate-200 pb-1.5 font-display">Grievance Summary</h4>
+                <h4 className="font-semibold text-gov-blue border-b border-slate-200 pb-1.5 font-display">
+                  {mode === 'appeal' ? 'Appeal Summary' : 'Grievance Summary'}
+                </h4>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-slate-500 block">Complainant:</span> <strong className="text-slate-800">{formData.name}</strong></div>
                   <div><span className="text-slate-500 block">Mobile No:</span> <strong className="text-slate-800">{formData.phone}</strong></div>
                   <div><span className="text-slate-500 block">District:</span> <strong className="text-slate-800">{formData.district}</strong></div>
                   <div><span className="text-slate-500 block">Department:</span> <strong className="text-slate-800">{departments.find(d => d.id === formData.department)?.name}</strong></div>
+                  {mode === 'appeal' && (
+                    <div className="col-span-2 mt-1"><span className="text-slate-500 block">Original Grievance Ref:</span> <strong className="text-slate-800 font-mono">{formData.prevRefNum}</strong></div>
+                  )}
                 </div>
                 <div className="text-xs pt-2 border-t border-slate-100">
                   <span className="text-slate-500 block">Subject:</span>
@@ -364,7 +408,7 @@ export default function GrievanceModal({ isOpen, onClose }) {
                 <ShieldCheck className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-yellow-800 leading-relaxed">
                   <span className="font-bold block mb-1">Legal Declaration</span>
-                  By submitting this grievance, I hereby declare that the facts mentioned above are true to the best of my knowledge. I understand that submitting false reports or malicious complaints can lead to administrative or legal action under the Jammu & Kashmir Civil Services Conduct Rules.
+                  By submitting this {mode === 'appeal' ? 'appeal' : 'grievance'}, I hereby declare that the facts mentioned above are true to the best of my knowledge. I understand that submitting false reports or malicious complaints can lead to administrative or legal action under the Jammu & Kashmir Civil Services Conduct Rules.
                 </div>
               </div>
 
@@ -391,15 +435,21 @@ export default function GrievanceModal({ isOpen, onClose }) {
               <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2 animate-bounce">
                 <CheckCircle2 className="h-10 w-10" />
               </div>
-              <h4 className="text-xl font-bold font-display text-slate-900">Grievance Registered Successfully</h4>
+              <h4 className="text-xl font-bold font-display text-slate-900">
+                {mode === 'appeal' ? 'Appeal Registered Successfully' : 'Grievance Registered Successfully'}
+              </h4>
               <p className="text-sm text-slate-500 max-w-md">
-                Thank you, <strong className="text-slate-800">{formData.name}</strong>. Your grievance has been registered on the JK Samadhan portal and forwarded to the <strong>{departments.find(d => d.id === formData.department)?.name}</strong>.
+                Thank you, <strong className="text-slate-800">{formData.name}</strong>. Your {mode === 'appeal' ? 'appeal' : 'grievance'} has been registered on the JK Samadhan portal and forwarded to the Appellate Authority of the <strong>{departments.find(d => d.id === formData.department)?.name}</strong>.
               </p>
               
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 max-w-sm w-full my-4">
-                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Grievance Reference Number</span>
+                <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider block">
+                  {mode === 'appeal' ? 'Appeal Reference Number' : 'Grievance Reference Number'}
+                </span>
                 <span className="text-xl font-bold font-mono text-gov-blue select-all block mt-1">{refNum}</span>
-                <span className="text-[10px] text-slate-500 block mt-2">Please save this reference number to track the status of your grievance. An SMS and Email confirmation have been sent to you.</span>
+                <span className="text-[10px] text-slate-500 block mt-2">
+                  Please save this reference number to track the status of your {mode === 'appeal' ? 'appeal' : 'grievance'}. An SMS and Email confirmation have been sent to you.
+                </span>
               </div>
 
               <div className="flex gap-3 pt-4 w-full justify-center">
@@ -440,7 +490,7 @@ export default function GrievanceModal({ isOpen, onClose }) {
                 onClick={handleSubmit}
                 className="px-6 py-2 rounded-lg bg-gov-green text-white text-sm font-semibold hover:bg-emerald-700 transition-all flex items-center gap-1 shadow-sm"
               >
-                Submit Grievance
+                {mode === 'appeal' ? 'Submit Appeal' : 'Submit Grievance'}
               </button>
             )}
           </div>
