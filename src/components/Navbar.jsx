@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Menu, X, Play, Accessibility, Sun, Moon, Volume2, ChevronDown } from 'lucide-react';
 import emblemImg from '../assets/emblem.png';
 import logoImg from '../assets/logo.png';
@@ -15,6 +15,35 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
   const [supportOpen, setSupportOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [prefOpen, setPrefOpen] = useState(false);
+
+  // Refs for outside click detection
+  const grievanceRef = useRef(null);
+  const supportRef = useRef(null);
+  const loginRef = useRef(null);
+  const prefRef = useRef(null);
+
+  // Click outside listener
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (grievanceOpen && grievanceRef.current && !grievanceRef.current.contains(event.target)) {
+        setGrievanceOpen(false);
+      }
+      if (supportOpen && supportRef.current && !supportRef.current.contains(event.target)) {
+        setSupportOpen(false);
+      }
+      if (loginOpen && loginRef.current && !loginRef.current.contains(event.target)) {
+        setLoginOpen(false);
+      }
+      if (prefOpen && prefRef.current && !prefRef.current.contains(event.target)) {
+        setPrefOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [grievanceOpen, supportOpen, loginOpen, prefOpen]);
 
   useEffect(() => {
     let lastState = false;
@@ -63,6 +92,14 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
   const handleNavClick = (e, href, name) => {
     e.preventDefault();
     setActiveLink(name);
+    
+    // Close all dropdowns
+    setGrievanceOpen(false);
+    setSupportOpen(false);
+    setLoginOpen(false);
+    setPrefOpen(false);
+    setIsOpen(false);
+
     const element = document.querySelector(href);
     if (element) {
       const offsetTop = element.getBoundingClientRect().top + window.pageYOffset - 120;
@@ -70,7 +107,6 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
         top: offsetTop,
         behavior: 'smooth'
       });
-      setIsOpen(false);
     }
   };
 
@@ -113,7 +149,7 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
               className={`font-black leading-none tracking-wide ${ scrolled ? 'text-[#0b2240]' : 'text-white' }`}
               style={{ fontFamily: "'Cinzel', Georgia, serif", fontSize: '13px', letterSpacing: '0.12em' }}
             >
-              JK <span style={{ color: '#13b183' }}>Samadhan</span> 2.0
+              JK <span style={{ color: '#ff9933' }}>Samadhan</span> 2.0
             </span>
             <span
               className={`font-semibold uppercase tracking-widest ${ scrolled ? 'text-slate-400' : 'text-white/55' }`}
@@ -156,7 +192,7 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
         <div className="flex items-center gap-2">
 
           {/* Unified Preference & Accessibility Option */}
-          <div className="relative">
+          <div className="relative" ref={prefRef}>
             <button
               onClick={() => {
                 setPrefOpen(!prefOpen);
@@ -293,9 +329,14 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
             ))}
 
             {/* Grievance Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={grievanceRef}>
               <button
-                onClick={() => { setGrievanceOpen(!grievanceOpen); setSupportOpen(false); }}
+                onClick={() => {
+                  setGrievanceOpen(!grievanceOpen);
+                  setSupportOpen(false);
+                  setLoginOpen(false);
+                  setPrefOpen(false);
+                }}
                 className={`flex items-center gap-1 py-1 cursor-pointer transition-all duration-300 group ${
                   scrolled ? 'text-slate-600 hover:text-[#0c408f]' : 'text-white/75 hover:text-white'
                 }`}
@@ -321,9 +362,14 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
             </div>
 
             {/* Help & Support Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={supportRef}>
               <button
-                onClick={() => { setSupportOpen(!supportOpen); setGrievanceOpen(false); }}
+                onClick={() => {
+                  setSupportOpen(!supportOpen);
+                  setGrievanceOpen(false);
+                  setLoginOpen(false);
+                  setPrefOpen(false);
+                }}
                 className={`flex items-center gap-1 py-1 cursor-pointer transition-all duration-300 group ${
                   scrolled ? 'text-slate-600 hover:text-[#0c408f]' : 'text-white/75 hover:text-white'
                 }`}
@@ -383,9 +429,14 @@ export default function Navbar({ onLodgeClick, onTrackClick, onAuthClick, onFaqC
             </button>
 
             {/* Login Dropdown button */}
-            <div className="relative">
+            <div className="relative" ref={loginRef}>
               <button
-                onClick={() => { setLoginOpen(!loginOpen); setGrievanceOpen(false); setSupportOpen(false); }}
+                onClick={() => {
+                  setLoginOpen(!loginOpen);
+                  setGrievanceOpen(false);
+                  setSupportOpen(false);
+                  setPrefOpen(false);
+                }}
                 className={`px-4 py-1.5 text-[11px] font-bold rounded-full flex items-center gap-1 transition-all duration-300 cursor-pointer tracking-wider shadow-sm ${
                   scrolled
                     ? 'bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100'

@@ -53,7 +53,7 @@ export default function AboutUs() {
 
               <TextRevealItem>
                 <h2 className="font-display font-black text-4xl sm:text-5xl text-white leading-tight">
-                  Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-gov-blue-light to-gov-green">JK Samadhan 2.0</span>
+                  Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-gov-blue-light to-gov-saffron">JK Samadhan 2.0</span>
                 </h2>
                 <div className="w-20 h-1 bg-gov-saffron rounded-full mt-3"></div>
               </TextRevealItem>

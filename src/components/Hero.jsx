@@ -206,7 +206,7 @@ export default function Hero() {
                 textShadow: '0 4px 40px rgba(0,0,0,0.7)',
               }}
             >
-              JK <span className="text-[#13b183]">Samadhan</span>
+              JK <span className="text-gov-saffron">Samadhan</span>
             </h1>
           </StaggerItem>
 
