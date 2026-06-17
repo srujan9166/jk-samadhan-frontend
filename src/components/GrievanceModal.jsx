@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, FileText, User, Mail, Phone, MapPin, Building, ChevronRight, ChevronLeft, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react';
+import { X, FileText, User, Mail, Phone, MapPin, Building, ChevronRight, ChevronLeft, CheckCircle2, ShieldCheck, AlertCircle, Lock, Info } from 'lucide-react';
 
-export default function GrievanceModal({ isOpen, onClose, mode = 'grievance' }) {
+export default function GrievanceModal({ isOpen, onClose, mode = 'grievance', onLoginRedirect, onRegisterRedirect }) {
   const [step, setStep] = useState(1);
+  const [isGated, setIsGated] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -22,6 +23,7 @@ export default function GrievanceModal({ isOpen, onClose, mode = 'grievance' }) 
 
   React.useEffect(() => {
     if (isOpen) {
+      setIsGated(true);
       setFormData({
         name: '',
         email: '',
@@ -161,6 +163,97 @@ export default function GrievanceModal({ isOpen, onClose, mode = 'grievance' }) 
       <div className={`bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden motion-modal-content transform flex flex-col max-h-[90vh] ${
         isOpen ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-4 opacity-0'
       }`}>
+        {isGated ? (
+          /* ── Gated Warning Gate Pop-up ── */
+          <div className="flex flex-col bg-white dark:bg-slate-950">
+            {/* Top Tri-Color stripe */}
+            <div className="w-full flex select-none" style={{ height: '3px' }}>
+              <div className="flex-1" style={{ background: 'linear-gradient(90deg, #FF9933, #ffb347)' }} />
+              <div className="flex-1 bg-white/90" />
+              <div className="flex-1" style={{ background: 'linear-gradient(90deg, #138808, #22c55e)' }} />
+            </div>
+
+            {/* Modal Header for warning */}
+            <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center relative select-none">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="h-5 w-5 text-gov-saffron" />
+                <span className="font-display font-bold text-xs uppercase tracking-wider text-slate-200">
+                  Authentication Required
+                </span>
+              </div>
+              <button 
+                onClick={onClose} 
+                className="p-1 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            {/* Warning Content */}
+            <div className="p-6 md:p-8 space-y-5 md:space-y-6 text-center select-none bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] dark:bg-none overflow-y-auto max-h-[calc(90vh-60px)]">
+              
+              {/* Alert Badge Icon */}
+              <div className="mx-auto w-16 h-16 rounded-full bg-red-50 dark:bg-red-950/30 flex items-center justify-center text-red-600 dark:text-red-500 shadow-inner">
+                <AlertCircle className="h-10 w-10 animate-pulse" />
+              </div>
+
+              {/* Title Warning */}
+              <div className="space-y-2">
+                <h3 className="font-display font-black text-xl md:text-2xl text-red-600 dark:text-red-500 tracking-tight leading-tight max-w-xl mx-auto uppercase">
+                  Grievance can now be lodged only by registered users
+                </h3>
+                <div className="w-16 h-0.5 bg-red-500/30 mx-auto rounded-full"></div>
+              </div>
+
+              {/* Info Description Box */}
+              <div className="max-w-xl mx-auto bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800 rounded-2xl p-5 shadow-sm text-xs text-slate-600 dark:text-slate-400 leading-relaxed text-left space-y-3">
+                <p>
+                  If you are a registered user, then please log in to the <strong>JK Samadhan Portal</strong> (Jammu Kashmir Unified Grievance Redressal &amp; Monitoring System) by providing your Username and Password in the User Login section.
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-500 flex items-start gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <Info className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                  <span>Only authenticated profiles are authorized to file official grievances to ensure complete accountability and follow-up tracking.</span>
+                </p>
+              </div>
+
+              {/* Action grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md mx-auto pt-3">
+                
+                {/* Login Button */}
+                <button
+                  onClick={onLoginRedirect}
+                  className="w-full py-3 bg-[#0c408f] hover:bg-[#09306c] text-white font-extrabold rounded-xl text-xs uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.02]"
+                >
+                  <Lock className="h-3.5 w-3.5" />
+                  <span>Log In to Portal</span>
+                </button>
+
+                {/* Register Button */}
+                <button
+                  onClick={onRegisterRedirect}
+                  className="w-full py-3 bg-[#13b183] hover:bg-[#0f966e] text-white font-extrabold rounded-xl text-xs uppercase tracking-wider transition-all duration-300 shadow-md hover:shadow-lg cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.02]"
+                >
+                  <User className="h-3.5 w-3.5" />
+                  <span>Register Account</span>
+                </button>
+
+              </div>
+
+              {/* Bottom "Home" close button */}
+              <div className="flex justify-center pt-6 border-t border-slate-100 dark:border-slate-800/50">
+                <button 
+                  onClick={onClose}
+                  className="px-6 py-2.5 rounded-full bg-[#0c408f] hover:bg-[#09306c] text-white text-xs font-bold tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-md hover:scale-105 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Home
+                </button>
+              </div>
+
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Header */}
         <div className="bg-gov-blue text-white px-6 py-4 flex justify-between items-center relative">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-gov-saffron via-white to-gov-green"></div>
@@ -494,6 +587,8 @@ export default function GrievanceModal({ isOpen, onClose, mode = 'grievance' }) 
               </button>
             )}
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

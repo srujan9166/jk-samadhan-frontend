@@ -21,8 +21,12 @@ export default function MobileShowcase() {
       {/* ── Video Background ── */}
       <video
         autoPlay loop muted playsInline
-        className="absolute inset-0 w-full h-full object-cover z-0"
-        style={{ objectPosition: 'center center' }}
+        className="absolute inset-0 w-full h-full object-cover z-0 will-change-transform"
+        style={{ 
+          objectPosition: 'center center',
+          transform: 'translate3d(0, 0, 0)',
+          filter: 'brightness(0.99) contrast(0.99)'
+        }}
       >
         <source src={mobileBgVideo} type="video/mp4" />
       </video>

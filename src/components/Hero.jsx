@@ -1,29 +1,16 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StaggerContainer, StaggerItem } from './ScrollReveal';
-import jkVideo2 from '../assets/jk_video2.mp4';
-
-const VIDEOS = [jkVideo2];
-const SLIDE_DURATION = 8000; // ms per slide
-
-// FIX #6: Constant outside component — stable reference, no re-creation on render
-const SLIDE_TRANSITION = 'transform 1s cubic-bezier(0.77, 0, 0.18, 1), opacity 0.6s ease';
+import heroBg from '../assets/hero_bg.jpg';
 
 export default function Hero() {
   const contentRef = useRef(null);
-  const videoRefs = useRef([]);
-  const rafRef = useRef(null); // FIX #4: RAF ref for parallax
+  const bgRef = useRef(null);
+  const rafRef = useRef(null);
 
-  const [current, setCurrent] = useState(0);
-  const [prev, setPrev] = useState(null);
-  const [transitioning, setTransitioning] = useState(false);
-  const [direction, setDirection] = useState(1);
-
-  // FIX #8: Detect reduced motion once
   const reducedMotion =
     typeof window !== 'undefined' &&
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // FIX #4: Parallax with requestAnimationFrame to prevent scroll jank
   useEffect(() => {
     const handleScroll = () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
@@ -33,6 +20,9 @@ export default function Hero() {
           contentRef.current.style.transform = `translateY(${scrollY * 0.15}px)`;
           contentRef.current.style.opacity = String(Math.min(1, Math.max(0, 1 - scrollY / 600)));
         }
+        if (bgRef.current && !reducedMotion) {
+          bgRef.current.style.transform = `translateY(${scrollY * 0.08}px) scale(1.05)`;
+        }
       });
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -40,56 +30,7 @@ export default function Hero() {
       window.removeEventListener('scroll', handleScroll);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, []);
-
-  // Play current video, pause others
-  useEffect(() => {
-    videoRefs.current.forEach((vid, i) => {
-      if (!vid) return;
-      if (i === current) {
-        vid.currentTime = 0;
-        // FIX #8: Respect reduced motion — don't autoplay if user prefers it
-        if (!reducedMotion) vid.play().catch(() => { });
-      } else {
-        vid.pause();
-      }
-    });
-  }, [current, reducedMotion]);
-
-  const goTo = useCallback(
-    (index, dir = 1) => {
-      if (transitioning) return;
-      setDirection(dir);
-      setTransitioning(true);
-      setPrev(current);
-      setCurrent(index);
-      setTimeout(() => {
-        setPrev(null);
-        setTransitioning(false);
-      }, 1000);
-    },
-    [current, transitioning]
-  );
-
-  const goNext = useCallback(() => {
-    goTo((current + 1) % VIDEOS.length, 1);
-  }, [current, goTo]);
-
-  const goPrev = useCallback(() => {
-    goTo((current - 1 + VIDEOS.length) % VIDEOS.length, -1);
-  }, [current, goTo]);
-
-  // FIX #1: Single timer effect — always uses the freshest goNext, no stale closures
-  useEffect(() => {
-    if (reducedMotion) return; // FIX #8: No auto-advance for reduced motion
-    const id = setInterval(goNext, SLIDE_DURATION);
-    return () => clearInterval(id);
-  }, [goNext, reducedMotion]);
-
-  // Handlers no longer need to manage the timer — the effect above handles it
-  const handleDot = (i) => goTo(i, i > current ? 1 : -1);
-  const handlePrev = () => goPrev();
-  const handleNext = () => goNext();
+  }, [reducedMotion]);
 
   return (
     <section
@@ -97,48 +38,21 @@ export default function Hero() {
       className="relative w-full overflow-hidden select-none"
       style={{ height: '100vh', minHeight: '600px' }}
     >
-      {/* ── Video Slides ── */}
-      {VIDEOS.map((src, i) => {
-        let transform = 'translateX(110%) scale(1.05)';
-        let opacity = 0;
-        let zIndex = 0;
-
-        if (i === current) {
-          transform = 'translateX(0%) scale(1.05)';
-          opacity = 1;
-          zIndex = 2;
-        } else if (i === prev) {
-          transform = `translateX(${direction * -110}%) scale(1.05)`;
-          opacity = 0.4;
-          zIndex = 1;
-        }
-
-        return (
-          <div
-            key={i}
-            className="absolute inset-0 will-change-transform"
-            // FIX #6: Stable transition reference — no new object on every render
-            style={{ transform, opacity, zIndex, transition: SLIDE_TRANSITION }}
-          >
-            <video
-              ref={(el) => (videoRefs.current[i] = el)}
-              muted
-              playsInline
-              loop
-              // FIX #5: Only eager-load current + next; defer others to save bandwidth
-              preload={
-                i === current || i === (current + 1) % VIDEOS.length
-                  ? 'auto'
-                  : 'none'
-              }
-              className="w-full h-full object-cover"
-              style={{ objectPosition: 'center 35%' }}
-            >
-              <source src={src} type="video/mp4" />
-            </video>
-          </div>
-        );
-      })}
+      {/* ── Static Background Image with Parallax ── */}
+      <div
+        ref={bgRef}
+        className="absolute inset-0 z-0 will-change-transform"
+        style={{
+          transform: reducedMotion ? 'none' : 'scale(1.05)',
+        }}
+      >
+        <img
+          src={heroBg}
+          alt="JK Samadhan Portal Background"
+          className="w-full h-full object-cover"
+          style={{ objectPosition: 'center 35%' }}
+        />
+      </div>
 
       {/* ── Layered Gradient Overlays ── */}
       <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
@@ -180,98 +94,47 @@ export default function Hero() {
       {/* ── Main Content ── */}
       <div
         ref={contentRef}
-        className="absolute inset-0 z-20 flex flex-col items-center justify-center px-4 text-center"
-        // FIX #7: Composite opacity changes too, not just transform
+        className="absolute inset-0 z-20 flex items-center justify-start px-4 sm:px-6 lg:px-8"
         style={{
           paddingTop: '130px',
           paddingBottom: '70px',
           willChange: 'transform, opacity',
         }}
       >
-        <StaggerContainer staggerChildren={0.15} className="flex flex-col items-center justify-center">
-          <StaggerItem duration={0.9} y={40}>
-            <p
-              className="text-white/80 font-semibold text-lg sm:text-2xl md:text-3xl uppercase tracking-[0.25em] mb-3"
-              style={{ textShadow: '0 2px 20px rgba(0,0,0,0.7)' }}
-            >
-              Welcome To
-            </p>
-          </StaggerItem>
+        <div className="w-full max-w-7xl mx-auto">
+          <StaggerContainer staggerChildren={0.15} className="flex flex-col items-start justify-center text-left max-w-3xl">
+            <StaggerItem duration={0.9} y={40}>
+              <p
+                className="text-white/80 font-semibold text-lg sm:text-2xl md:text-3xl uppercase tracking-[0.25em] mb-3"
+                style={{ textShadow: '0 2px 20px rgba(0,0,0,0.7)' }}
+              >
+                Welcome To
+              </p>
+            </StaggerItem>
 
-          <StaggerItem duration={1.0} y={50}>
-            <h1
-              className="font-display font-black text-white leading-none tracking-tight mb-5"
-              style={{
-                fontSize: 'clamp(2.8rem, 7vw, 6.5rem)',
-                textShadow: '0 4px 40px rgba(0,0,0,0.7)',
-              }}
-            >
-              JK <span className="text-gov-saffron">Samadhan</span>
-            </h1>
-          </StaggerItem>
+            <StaggerItem duration={1.0} y={50}>
+              <h1
+                className="font-display font-black text-white leading-none tracking-tight mb-5"
+                style={{
+                  fontSize: 'clamp(2.8rem, 7vw, 6.5rem)',
+                  textShadow: '0 4px 40px rgba(0,0,0,0.7)',
+                }}
+              >
+                JK <span className="text-gov-saffron">Samadhan</span>
+              </h1>
+            </StaggerItem>
 
-          <StaggerItem duration={1.1} y={30}>
-            <p
-              className="text-white/70 font-medium text-sm sm:text-base md:text-lg tracking-widest uppercase"
-              style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)' }}
-            >
-              Government of Jammu &amp; Kashmir
-            </p>
-          </StaggerItem>
-        </StaggerContainer>
-      </div>
-
-
-      {/* ── Dot Indicators ── */}
-      {VIDEOS.length > 1 && (
-        <div className="absolute bottom-14 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5">
-          {VIDEOS.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => handleDot(i)}
-              disabled={transitioning}
-              className="group relative flex items-center justify-center disabled:cursor-not-allowed"
-              aria-label={`Go to slide ${i + 1}`}
-              // FIX #10: Screen readers know which slide is active
-              aria-current={i === current ? 'true' : undefined}
-            >
-              {i === current && (
-                <svg className="absolute w-5 h-5 -rotate-90" viewBox="0 0 20 20">
-                  <circle
-                    cx="10"
-                    cy="10"
-                    r="8"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.25)"
-                    strokeWidth="1.5"
-                  />
-                  <circle
-                    // FIX #2: key={current} forces remount so animation restarts each slide
-                    key={current}
-                    cx="10"
-                    cy="10"
-                    r="8"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="1.5"
-                    strokeDasharray={`${2 * Math.PI * 8}`}
-                    strokeDashoffset={`${2 * Math.PI * 8}`}
-                    strokeLinecap="round"
-                    style={{ animation: `dotProgress ${SLIDE_DURATION}ms linear forwards` }}
-                  />
-                </svg>
-              )}
-              <span
-                className={`block rounded-full transition-all duration-300 ${ // FIX #3: duration-300 (valid Tailwind)
-                  i === current
-                    ? 'w-2.5 h-2.5 bg-white'
-                    : 'w-1.5 h-1.5 bg-white/45 hover:bg-white/70'
-                  }`}
-              />
-            </button>
-          ))}
+            <StaggerItem duration={1.1} y={30}>
+              <p
+                className="text-white/70 font-medium text-sm sm:text-base md:text-lg tracking-widest uppercase"
+                style={{ textShadow: '0 2px 16px rgba(0,0,0,0.6)' }}
+              >
+                Government of Jammu &amp; Kashmir
+              </p>
+            </StaggerItem>
+          </StaggerContainer>
         </div>
-      )}
+      </div>
 
       {/* ── Bottom ticker bar ── */}
       <div
@@ -309,18 +172,14 @@ export default function Hero() {
           opacity: 0;
           animation: heroFadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
-        /* FIX #8: Respect prefers-reduced-motion */
         @media (prefers-reduced-motion: reduce) {
           .hero-animate-in {
             animation: none;
             opacity: 1;
           }
         }
-        @keyframes dotProgress {
-          from { stroke-dashoffset: ${2 * Math.PI * 8}; }
-          to   { stroke-dashoffset: 0; }
-        }
       `}</style>
     </section>
   );
 }
+

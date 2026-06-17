@@ -75,6 +75,14 @@ function App() {
         isOpen={isGrievanceOpen} 
         onClose={() => setIsGrievanceOpen(false)} 
         mode={grievanceModalMode}
+        onLoginRedirect={() => {
+          setIsGrievanceOpen(false);
+          handleOpenAuth('login');
+        }}
+        onRegisterRedirect={() => {
+          setIsGrievanceOpen(false);
+          handleOpenAuth('register');
+        }}
       />
       
       <TrackModal 
