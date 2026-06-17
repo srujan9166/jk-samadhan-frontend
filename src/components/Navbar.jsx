@@ -47,10 +47,6 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
 
   useEffect(() => {
     const handleScroll = () => {
-      const sy = window.scrollY;
-      const isScrolled = sy > 40;
-      setScrolled(prev => prev !== isScrolled ? isScrolled : prev);
-      
       // Conditionally close dropdowns only if they are open
       setGrievanceOpen(prev => prev ? false : prev);
       setSupportOpen(prev => prev ? false : prev);
@@ -101,7 +97,7 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
   };
 
   return (
-    <header className={`fixed top-0 left-0 w-full z-45 select-none`}>
+    <header className={`absolute top-0 left-0 w-full z-45 select-none`}>
 
       {/* ── Tricolor top accent stripe ── */}
       <div className="w-full flex" style={{ height: '3px' }}>
