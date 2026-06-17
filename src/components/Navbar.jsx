@@ -46,20 +46,10 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
   }, [grievanceOpen, supportOpen, loginOpen, prefOpen]);
 
   useEffect(() => {
-    let lastState = false;
     const handleScroll = () => {
       const sy = window.scrollY;
-      let isScrolled = lastState;
-      if (sy > 60) {
-        isScrolled = true;
-      } else if (sy < 15) {
-        isScrolled = false;
-      }
-      
-      if (isScrolled !== lastState) {
-        lastState = isScrolled;
-        setScrolled(isScrolled);
-      }
+      const isScrolled = sy > 40;
+      setScrolled(prev => prev !== isScrolled ? isScrolled : prev);
       
       // Conditionally close dropdowns only if they are open
       setGrievanceOpen(prev => prev ? false : prev);
@@ -111,7 +101,7 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
   };
 
   return (
-    <header className={`absolute top-0 left-0 w-full z-45 select-none`}>
+    <header className={`fixed top-0 left-0 w-full z-45 select-none`}>
 
       {/* ── Tricolor top accent stripe ── */}
       <div className="w-full flex" style={{ height: '3px' }}>
@@ -121,9 +111,9 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
       </div>
 
       {/* 1. TOP UTILITY ROW */}
-      <div className={`relative z-20 transition-all duration-150 py-2 px-5 sm:px-8 lg:px-10 flex justify-between items-center ${
+      <div className={`relative z-20 transition-all duration-300 ease-in-out py-2 px-5 sm:px-8 lg:px-10 flex justify-between items-center ${
         scrolled
-          ? 'bg-white/98 dark:bg-slate-950 backdrop-blur-xl'
+          ? 'bg-white/98 dark:bg-slate-950 backdrop-blur-xl shadow-sm'
           : 'bg-black/30 backdrop-blur-xl'
       }`}>
         
@@ -141,18 +131,18 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
           </div>
 
           {/* Divider */}
-          <div className={`hidden sm:block w-px h-10 ${ scrolled ? 'bg-slate-200' : 'bg-white/20' }`} />
+          <div className={`hidden sm:block w-px h-10 transition-colors duration-300 ${ scrolled ? 'bg-slate-200 dark:bg-slate-800' : 'bg-white/20' }`} />
 
           {/* Portal Title Block */}
           <div className="hidden sm:flex flex-col justify-center">
             <span
-              className={`font-bold leading-none uppercase ${ scrolled ? 'text-[#0b2240] dark:text-white' : 'text-white' }`}
+              className={`font-bold leading-none uppercase transition-colors duration-300 ${ scrolled ? 'text-[#0b2240] dark:text-white' : 'text-white' }`}
               style={{ fontFamily: "'Cinzel', Georgia, serif", fontSize: '15px', letterSpacing: '0.14em' }}
             >
               JK <span style={{ color: '#ff9933' }}>Samadhan</span> <span className="text-slate-400 dark:text-slate-500 font-semibold text-[12px] font-sans">2.0</span>
             </span>
             <span
-              className={`font-sans font-semibold uppercase tracking-[0.2em] ${ scrolled ? 'text-slate-400' : 'text-white/55' }`}
+              className={`font-sans font-semibold uppercase tracking-[0.2em] transition-colors duration-300 ${ scrolled ? 'text-slate-400' : 'text-white/55' }`}
               style={{ fontSize: '9px' }}
             >
               Govt of Jammu &amp; Kashmir
@@ -160,30 +150,30 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
           </div>
 
           {/* Divider */}
-          <div className={`hidden lg:block w-px h-10 ${ scrolled ? 'bg-slate-200' : 'bg-white/20' }`} />
+          <div className={`hidden lg:block w-px h-10 transition-colors duration-300 ${ scrolled ? 'bg-slate-200 dark:bg-slate-800' : 'bg-white/20' }`} />
 
           {/* Pill: JK Samadhan + JK Raabita */}
-          <div className={`hidden lg:flex items-center gap-2 px-4 py-2 rounded-full border ${
+          <div className={`hidden lg:flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 ${
             scrolled ? 'bg-slate-50 border-slate-200 dark:bg-slate-900/50 dark:border-slate-800' : 'bg-white/8 border-white/15 backdrop-blur-sm'
           }`}>
             <img src={logoImg} alt="JK Samadhan" className="w-4.5 h-4.5 object-contain" />
-            <span className={`text-[11px] font-bold uppercase tracking-[0.16em] ${ scrolled ? 'text-[#0b2240] dark:text-white' : 'text-white' }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>JK Samadhan</span>
-            <span className={`w-px h-3.5 ${ scrolled ? 'bg-slate-300 dark:bg-slate-800' : 'bg-white/25' }`} />
+            <span className={`text-[11px] font-bold uppercase tracking-[0.16em] transition-colors duration-300 ${ scrolled ? 'text-[#0b2240] dark:text-white' : 'text-white' }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>JK Samadhan</span>
+            <span className={`w-px h-3.5 transition-colors duration-300 ${ scrolled ? 'bg-slate-300 dark:bg-slate-800' : 'bg-white/25' }`} />
             <svg viewBox="0 0 100 100" className="w-4 h-4">
               <path d="M50 50 C40 30,30 30,30 40 C30 50,40 50,50 50" fill="#ff9933" />
               <path d="M50 50 C60 30,70 30,70 40 C70 50,60 50,50 50" fill="#138808" />
               <circle cx="50" cy="50" r="5" fill="#0b2240" />
             </svg>
-            <span className={`text-[11px] font-bold uppercase tracking-[0.16em] ${ scrolled ? 'text-[#0b2240] dark:text-white' : 'text-white' }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>JK Raabita</span>
+            <span className={`text-[11px] font-bold uppercase tracking-[0.16em] transition-colors duration-300 ${ scrolled ? 'text-[#0b2240] dark:text-white' : 'text-white' }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>JK Raabita</span>
           </div>
 
           {/* Divider */}
-          <div className={`hidden xl:block w-px h-10 ${ scrolled ? 'bg-slate-200' : 'bg-white/20' }`} />
+          <div className={`hidden xl:block w-px h-10 transition-colors duration-300 ${ scrolled ? 'bg-slate-200 dark:bg-slate-800' : 'bg-white/20' }`} />
 
           {/* Portal subtitle */}
           <div className="hidden xl:flex flex-col">
-            <span className={`text-[11px] font-bold uppercase tracking-[0.18em] ${ scrolled ? 'text-slate-800 dark:text-white/90' : 'text-white/90' }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>Jammu &amp; Kashmir Unified</span>
-            <span className={`font-sans text-[8.5px] font-semibold uppercase tracking-[0.14em] ${ scrolled ? 'text-slate-400 dark:text-white/50' : 'text-white/55' }`}>Grievance Redressal &amp; Monitoring</span>
+            <span className={`text-[11px] font-bold uppercase tracking-[0.18em] transition-colors duration-300 ${ scrolled ? 'text-slate-800 dark:text-white/90' : 'text-white/90' }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>Jammu &amp; Kashmir Unified</span>
+            <span className={`font-sans text-[8.5px] font-semibold uppercase tracking-[0.14em] transition-colors duration-300 ${ scrolled ? 'text-slate-400 dark:text-white/50' : 'text-white/55' }`}>Grievance Redressal &amp; Monitoring</span>
           </div>
 
         </div>
@@ -296,9 +286,9 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
       </div>
 
       {/* 2. BOTTOM NAVIGATION ROW */}
-      <nav className={`relative z-10 w-full transition-all duration-150 py-3.5 ${
+      <nav className={`relative z-10 w-full transition-all duration-300 ease-in-out py-3.5 ${
         scrolled
-          ? 'bg-white dark:bg-slate-950'
+          ? 'bg-white dark:bg-slate-950 shadow-sm'
           : 'bg-transparent'
       }`}>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
