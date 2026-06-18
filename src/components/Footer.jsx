@@ -1,8 +1,9 @@
 import React from 'react';
 import { Edit, Wrench, Eye, Phone, MapPin, Mail, ArrowUp } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import raabitaBannerImg from '../assets/raabita_banner.png';
 import { StaggerContainer, StaggerItem } from './ScrollReveal';
-
+ 
 export default function Footer() {
   const handleScrollTop = () => {
     window.scrollTo({
@@ -10,7 +11,7 @@ export default function Footer() {
       behavior: 'smooth'
     });
   };
-
+ 
   return (
     <footer id="contact" className="bg-[#0f2e5d] text-white text-xs border-t border-blue-900 relative pt-12 pb-6 text-left select-none font-sans">
       
@@ -24,7 +25,7 @@ export default function Footer() {
           <ArrowUp className="h-6 w-6 stroke-[3]" />
         </button>
       </div>
-
+ 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Main Content Grid */}
@@ -33,17 +34,13 @@ export default function Footer() {
           {/* LEFT COLUMN: Logo Box and 3 Stats Pills */}
           <StaggerItem className="lg:col-span-5 space-y-4">
             
-            {/* White Brand Logo Box */}
-            <div className="bg-white p-3 rounded-lg flex items-center gap-3 w-fit shadow-md border border-slate-100">
+            {/* Brand Logo Box */}
+            <div className="bg-white p-2 rounded-lg flex items-center justify-center w-fit shadow-md border border-slate-100">
               <img 
-                src={logoImg} 
-                alt="JK Samadhan Logo" 
-                className="w-8 h-8 object-contain" 
+                src={raabitaBannerImg} 
+                alt="JK Samadhan 2.0 | JK Raabita" 
+                className="h-10 object-contain" 
               />
-              <div className="flex flex-col">
-                <span className="font-display font-black text-xs text-[#0b2240] uppercase tracking-wide">JK Samadhan 2.0</span>
-                <span className="text-[9px] text-[#138808] font-bold uppercase tracking-wider">JK Raabita</span>
-              </div>
             </div>
 
             {/* Status Pills */}

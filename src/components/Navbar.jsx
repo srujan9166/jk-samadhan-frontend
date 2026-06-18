@@ -47,6 +47,7 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
 
   useEffect(() => {
     const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
       // Conditionally close dropdowns only if they are open
       setGrievanceOpen(prev => prev ? false : prev);
       setSupportOpen(prev => prev ? false : prev);
@@ -109,8 +110,8 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
       {/* 1. TOP UTILITY ROW */}
       <div className={`relative z-20 transition-all duration-300 ease-in-out py-2 px-5 sm:px-8 lg:px-10 flex justify-between items-center ${
         scrolled
-          ? 'bg-white/98 dark:bg-slate-950 backdrop-blur-xl shadow-sm'
-          : 'bg-black/30 backdrop-blur-xl'
+          ? 'bg-white/98 dark:bg-slate-950 shadow-sm border-b border-slate-200/40 dark:border-slate-800/40'
+          : 'bg-gov-gray dark:bg-slate-950 border-b border-slate-200/30 dark:border-slate-800/30'
       }`}>
         
         {/* ── LEFT: Emblem + Branding ── */}
@@ -127,18 +128,17 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
           </div>
 
           {/* Divider */}
-          <div className={`hidden sm:block w-px h-10 transition-colors duration-300 ${ scrolled ? 'bg-slate-200 dark:bg-slate-800' : 'bg-white/20' }`} />
+          <div className="hidden sm:block w-px h-10 transition-colors duration-300 bg-slate-200 dark:bg-slate-800" />
 
           {/* Portal Title Block */}
           <div className="hidden sm:flex flex-col justify-center">
             <span
-              className={`font-bold leading-none uppercase transition-colors duration-300 ${ scrolled ? 'text-[#0b2240] dark:text-white' : 'text-white' }`}
-              style={{ fontFamily: "'Cinzel', Georgia, serif", fontSize: '15px', letterSpacing: '0.14em' }}
+              className="font-sans font-extrabold leading-none uppercase text-[#0b2240] dark:text-white text-[15px] tracking-wider"
             >
-              JK <span style={{ color: '#ff9933' }}>Samadhan</span> <span className="text-slate-400 dark:text-slate-500 font-semibold text-[12px] font-sans">2.0</span>
+              JK <span style={{ color: '#ff9933' }}>Samadhan</span> <span className="text-slate-400 dark:text-slate-500 font-semibold text-[12px]">2.0</span>
             </span>
             <span
-              className={`font-sans font-semibold uppercase tracking-[0.2em] transition-colors duration-300 ${ scrolled ? 'text-slate-400' : 'text-white/55' }`}
+              className="font-sans font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400"
               style={{ fontSize: '9px' }}
             >
               Govt of Jammu &amp; Kashmir
@@ -146,30 +146,28 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
           </div>
 
           {/* Divider */}
-          <div className={`hidden lg:block w-px h-10 transition-colors duration-300 ${ scrolled ? 'bg-slate-200 dark:bg-slate-800' : 'bg-white/20' }`} />
+          <div className="hidden lg:block w-px h-10 transition-colors duration-300 bg-slate-200 dark:bg-slate-800" />
 
           {/* Pill: JK Samadhan + JK Raabita */}
-          <div className={`hidden lg:flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 ${
-            scrolled ? 'bg-slate-50 border-slate-200 dark:bg-slate-900/50 dark:border-slate-800' : 'bg-white/8 border-white/15 backdrop-blur-sm'
-          }`}>
+          <div className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-full border transition-all duration-300 bg-slate-100/80 border-slate-200 dark:bg-slate-900/50 dark:border-slate-800">
             <img src={logoImg} alt="JK Samadhan" className="w-4.5 h-4.5 object-contain" />
-            <span className={`text-[11px] font-bold uppercase tracking-[0.16em] transition-colors duration-300 ${ scrolled ? 'text-[#0b2240] dark:text-white' : 'text-white' }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>JK Samadhan</span>
-            <span className={`w-px h-3.5 transition-colors duration-300 ${ scrolled ? 'bg-slate-300 dark:bg-slate-800' : 'bg-white/25' }`} />
+            <span className="text-[11px] font-sans font-extrabold uppercase tracking-wider text-[#0b2240] dark:text-white">JK Samadhan</span>
+            <span className="w-px h-3.5 bg-slate-300 dark:bg-slate-800" />
             <svg viewBox="0 0 100 100" className="w-4 h-4">
               <path d="M50 50 C40 30,30 30,30 40 C30 50,40 50,50 50" fill="#ff9933" />
               <path d="M50 50 C60 30,70 30,70 40 C70 50,60 50,50 50" fill="#138808" />
               <circle cx="50" cy="50" r="5" fill="#0b2240" />
             </svg>
-            <span className={`text-[11px] font-bold uppercase tracking-[0.16em] transition-colors duration-300 ${ scrolled ? 'text-[#0b2240] dark:text-white' : 'text-white' }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>JK Raabita</span>
+            <span className="text-[11px] font-sans font-extrabold uppercase tracking-wider text-[#0b2240] dark:text-white">JK Raabita</span>
           </div>
 
           {/* Divider */}
-          <div className={`hidden xl:block w-px h-10 transition-colors duration-300 ${ scrolled ? 'bg-slate-200 dark:bg-slate-800' : 'bg-white/20' }`} />
+          <div className="hidden xl:block w-px h-10 transition-colors duration-300 bg-slate-200 dark:bg-slate-800" />
 
           {/* Portal subtitle */}
           <div className="hidden xl:flex flex-col">
-            <span className={`text-[11px] font-bold uppercase tracking-[0.18em] transition-colors duration-300 ${ scrolled ? 'text-slate-800 dark:text-white/90' : 'text-white/90' }`} style={{ fontFamily: "'Cinzel', Georgia, serif" }}>Jammu &amp; Kashmir Unified</span>
-            <span className={`font-sans text-[8.5px] font-semibold uppercase tracking-[0.14em] transition-colors duration-300 ${ scrolled ? 'text-slate-400 dark:text-white/50' : 'text-white/55' }`}>Grievance Redressal &amp; Monitoring</span>
+            <span className="text-[11px] font-sans font-extrabold uppercase tracking-wider text-[#0b2240] dark:text-white/90">Jammu &amp; Kashmir Unified</span>
+            <span className="font-sans text-[8.5px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/50">Grievance Redressal &amp; Monitoring</span>
           </div>
 
         </div>
@@ -186,13 +184,9 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
                 setSupportOpen(false);
                 setLoginOpen(false);
               }}
-              className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-sans font-bold tracking-wider transition-all duration-300 cursor-pointer border ${
-                scrolled
-                  ? 'bg-slate-900 hover:bg-slate-800 text-white border-slate-700'
-                  : 'bg-white/10 hover:bg-white/18 text-white border-white/20 backdrop-blur-sm'
-              } ${prefOpen ? 'ring-2 ring-emerald-500/50' : ''}`}
+              className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-sans font-bold tracking-wider transition-all duration-300 cursor-pointer border bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-white dark:border-slate-800 ${prefOpen ? 'ring-2 ring-emerald-500/50' : ''}`}
             >
-              <Accessibility className="h-3.5 w-3.5 text-white group-hover:rotate-12 transition-transform duration-300" />
+              <Accessibility className="h-3.5 w-3.5 text-slate-700 dark:text-white group-hover:rotate-12 transition-transform duration-300" />
               <span>Accessibility &amp; Tools</span>
               <ChevronDown className={`h-3 w-3 opacity-60 transition-transform duration-300 ${prefOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -284,8 +278,8 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
       {/* 2. BOTTOM NAVIGATION ROW */}
       <nav className={`relative z-10 w-full transition-all duration-300 ease-in-out py-3.5 ${
         scrolled
-          ? 'bg-white dark:bg-slate-950 shadow-sm'
-          : 'bg-transparent'
+          ? 'bg-white dark:bg-slate-950 shadow-sm border-b border-slate-100 dark:border-slate-900'
+          : 'bg-gov-gray/80 dark:bg-slate-950/80 backdrop-blur-sm'
       }`}>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           
@@ -299,14 +293,14 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
                 onClick={(e) => handleNavClick(e, href, name)}
                 className={`relative py-1 transition-all duration-300 group font-display text-[11px] font-bold tracking-widest uppercase ${
                   activeLink === name
-                    ? (scrolled ? 'text-[#0c408f] dark:text-[#ff9933]' : 'text-[#ff9933]')
-                    : (scrolled ? 'text-slate-600 hover:text-[#0c408f] dark:text-slate-300 dark:hover:text-white' : 'text-white/75 hover:text-white')
+                    ? 'text-[#0c408f] dark:text-[#ff9933]'
+                    : 'text-slate-650 hover:text-[#0c408f] dark:text-slate-350 dark:hover:text-white'
                 }`}
               >
                 {name}
                 <span className={`absolute bottom-0 left-0 h-[2px] rounded-full transition-all duration-300 ${
                   activeLink === name ? 'w-full' : 'w-0 group-hover:w-full'
-                } ${ scrolled ? 'bg-[#0c408f] dark:bg-[#ff9933]' : 'bg-[#ff9933]' }`} />
+                } bg-[#0c408f] dark:bg-[#ff9933]`} />
               </a>
             ))}
 
@@ -319,9 +313,7 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
                   setLoginOpen(false);
                   setPrefOpen(false);
                 }}
-                className={`flex items-center gap-1 py-1 cursor-pointer transition-all duration-300 group font-display text-[11px] font-bold tracking-widest uppercase ${
-                  scrolled ? 'text-slate-600 hover:text-[#0c408f] dark:text-slate-300 dark:hover:text-white' : 'text-white/75 hover:text-white'
-                }`}
+                className="flex items-center gap-1 py-1 cursor-pointer transition-all duration-300 group font-display text-[11px] font-bold tracking-widest uppercase text-slate-650 hover:text-[#0c408f] dark:text-slate-350 dark:hover:text-white"
               >
                 <span>Grievance</span>
                 <ChevronDown className={`h-3 w-3 transition-transform ${grievanceOpen ? 'rotate-180' : ''}`} />
@@ -352,9 +344,7 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
                   setLoginOpen(false);
                   setPrefOpen(false);
                 }}
-                className={`flex items-center gap-1 py-1 cursor-pointer transition-all duration-300 group font-display text-[11px] font-bold tracking-widest uppercase ${
-                  scrolled ? 'text-slate-600 hover:text-[#0c408f] dark:text-slate-300 dark:hover:text-white' : 'text-white/75 hover:text-white'
-                }`}
+                className="flex items-center gap-1 py-1 cursor-pointer transition-all duration-300 group font-display text-[11px] font-bold tracking-widest uppercase text-slate-650 hover:text-[#0c408f] dark:text-slate-350 dark:hover:text-white"
               >
                 <span>Help & Support</span>
                 <ChevronDown className={`h-3 w-3 transition-transform ${supportOpen ? 'rotate-180' : ''}`} />
@@ -376,20 +366,12 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
           <div className="hidden lg:block invisible font-display text-[11px] uppercase tracking-widest">Home About Contact Us Grievance Help</div>
 
           {/* Right Action buttons: Pill-style container containing CPGRAMS, Register, Login */}
-          <div className={`hidden sm:flex items-center gap-1.5 p-1 rounded-full border transition-all duration-300 ${
-            scrolled
-              ? 'bg-slate-100/85 border-slate-200/60 dark:bg-slate-900/85 dark:border-slate-800/60'
-              : 'bg-white/10 border-white/20 backdrop-blur-md'
-          }`}>
+          <div className="hidden sm:flex items-center gap-1.5 p-1 rounded-full border transition-all duration-300 bg-slate-100/80 border-slate-200/60 dark:bg-slate-900/80 dark:border-slate-800/60">
 
             {/* CPGRAMS button */}
             <button
               onClick={() => window.open('https://pgportal.gov.in', '_blank')}
-              className={`px-4 py-1.5 text-[11px] font-sans font-bold rounded-full transition-all duration-200 cursor-pointer tracking-wider ${
-                scrolled
-                  ? 'text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
-                  : 'text-white/85 hover:text-white hover:bg-white/15'
-              }`}
+              className="px-4 py-1.5 text-[11px] font-sans font-bold rounded-full transition-all duration-200 cursor-pointer tracking-wider text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
             >
               CPGRAMS
             </button>
@@ -397,11 +379,7 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
             {/* Registration button */}
             <button
               onClick={() => onAuthClick('register')}
-              className={`px-4 py-1.5 text-[11px] font-sans font-bold rounded-full transition-all duration-200 cursor-pointer tracking-wider ${
-                scrolled
-                  ? 'text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50'
-                  : 'text-white/85 hover:text-white hover:bg-white/15'
-              }`}
+              className="px-4 py-1.5 text-[11px] font-sans font-bold rounded-full transition-all duration-200 cursor-pointer tracking-wider text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
             >
               Register
             </button>
@@ -415,11 +393,7 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
                   setSupportOpen(false);
                   setPrefOpen(false);
                 }}
-                className={`px-4 py-1.5 text-[11px] font-sans font-bold rounded-full flex items-center gap-1 transition-all duration-300 cursor-pointer tracking-wider shadow-sm ${
-                  scrolled
-                    ? 'bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100'
-                    : 'bg-white text-slate-950 hover:bg-white/90 dark:bg-slate-950 dark:text-white dark:hover:bg-slate-800'
-                }`}
+                className="px-4 py-1.5 text-[11px] font-sans font-bold rounded-full flex items-center gap-1 transition-all duration-300 cursor-pointer tracking-wider shadow-sm bg-gov-blue text-white hover:bg-gov-blue-medium dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
               >
                 <span>Login</span>
                 <ChevronDown className={`h-3.5 w-3.5 transition-transform ${loginOpen ? 'rotate-180' : ''}`} />

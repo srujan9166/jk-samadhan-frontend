@@ -25,18 +25,26 @@ export default function AboutUs() {
   return (
     <section 
       id="about" 
-      className="py-24 border-b border-slate-900 text-left overflow-hidden relative"
+      className="py-24 border-y border-slate-200/50 text-left overflow-hidden relative"
       style={{
-        backgroundImage: `url(${aboutBg})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        backgroundColor: '#f1f5f9',
+        backgroundImage: `
+          radial-gradient(at 0% 0%, #ffeedb 0px, transparent 55%),
+          radial-gradient(at 50% 100%, #e0f2fe 0px, transparent 65%),
+          radial-gradient(at 100% 0%, #dcfce7 0px, transparent 55%)
+        `
       }}
     >
-      {/* Premium dark gradient overlay to ensure perfect contrast and depth */}
-      <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/95 to-[#050c1e]/90 z-0"></div>
-
-      {/* Subtle floating glow orb to enhance aesthetic */}
-      <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-gov-blue-light/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
+      {/* Background image used as a very subtle, high-end background texture */}
+      <div 
+        className="absolute inset-0 opacity-[0.03] pointer-events-none z-0" 
+        style={{
+          backgroundImage: `url(${aboutBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'grayscale(100%)',
+        }}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
@@ -46,34 +54,34 @@ export default function AboutUs() {
             <TextRevealGroup className="space-y-4">
               <TextRevealItem>
                 {/* Category tag */}
-                <span className="text-[11px] font-extrabold text-gov-blue-light uppercase tracking-widest bg-gov-blue-light/10 px-4 py-2 rounded-full border border-gov-blue-light/20">
+                <span className="text-[11px] font-extrabold text-gov-blue-light uppercase tracking-widest bg-blue-50/80 px-4 py-2 rounded-full border border-blue-100/60">
                   About the Portal
                 </span>
               </TextRevealItem>
 
               <TextRevealItem>
-                <h2 className="font-display font-black text-4xl sm:text-5xl text-white leading-tight">
+                <h2 className="font-display font-black text-4xl sm:text-5xl text-slate-800 leading-tight">
                   Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-gov-blue-light to-gov-saffron">JK Samadhan 2.0</span>
                 </h2>
                 <div className="w-20 h-1 bg-gov-saffron rounded-full mt-3"></div>
               </TextRevealItem>
 
               <TextRevealItem>
-                <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl font-medium">
+                <p className="text-slate-600 text-sm sm:text-base leading-relaxed max-w-2xl font-medium">
                   JK SAMADHAN-2.0 is the official Unified Grievance Redressal & Monitoring System of Jammu and Kashmir. Built to empower citizens, it provides a transparent and time-bound mechanism to submit, track, and resolve grievances directly with government authorities.
                 </p>
               </TextRevealItem>
             </TextRevealGroup>
 
             {/* Sub-Brand info and action callout */}
-            <ScrollReveal delay={0.3} className="bg-slate-950/65 backdrop-blur-md border border-slate-800/80 p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <ScrollReveal delay={0.3} className="bg-[#f8fafc]/80 backdrop-blur-md border border-slate-200/85 p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
               <div className="flex items-center gap-3.5">
                 <div className="w-10 h-10 rounded-full bg-[#13b183]/10 border border-[#13b183]/20 flex items-center justify-center p-1">
                   <Award className="h-5 w-5 text-[#13b183]" />
                 </div>
                 <div>
-                  <h4 className="font-display font-bold text-xs text-white">Integrated with JK Raabita</h4>
-                  <p className="text-[11px] text-slate-400">Jammu & Kashmir's unified state service tracking platform.</p>
+                  <h4 className="font-display font-bold text-xs text-slate-800">Integrated with JK Raabita</h4>
+                  <p className="text-[11px] text-slate-500">Jammu & Kashmir's unified state service tracking platform.</p>
                 </div>
               </div>
               <button 
@@ -98,16 +106,16 @@ export default function AboutUs() {
                 <ScrollReveal 
                   key={index}
                   delay={0.15 * index}
-                  className="bg-slate-900/40 backdrop-blur-md border border-slate-800/60 hover:border-slate-700/80 rounded-2xl p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 flex items-start gap-5"
+                  className="bg-[#f8fafc]/70 backdrop-blur-md border border-slate-200/70 hover:border-slate-300/90 rounded-2xl p-6 hover:shadow-[0_12px_40px_rgba(0,0,0,0.03)] hover:-translate-y-0.5 transition-all duration-300 flex items-start gap-5"
                 >
-                  <div className="p-3 bg-slate-950/80 rounded-xl shadow-sm border border-slate-800/80 text-center shrink-0">
+                  <div className="p-3 bg-slate-50 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] border border-slate-100/80 text-center shrink-0">
                     {pillar.icon}
                   </div>
                   <div className="space-y-1 text-left">
-                    <h3 className="font-display font-bold text-base text-white">
+                    <h3 className="font-display font-bold text-base text-slate-800">
                       {pillar.title}
                     </h3>
-                    <p className="text-slate-400 text-sm leading-relaxed">
+                    <p className="text-slate-600 text-sm leading-relaxed">
                       {pillar.desc}
                     </p>
                   </div>
