@@ -3,7 +3,7 @@ import { Edit, Wrench, Eye, Phone, MapPin, Mail, ArrowUp } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 import raabitaBannerImg from '../assets/raabita_banner.png';
 import { StaggerContainer, StaggerItem } from './ScrollReveal';
- 
+
 export default function Footer() {
   const handleScrollTop = () => {
     window.scrollTo({
@@ -11,13 +11,13 @@ export default function Footer() {
       behavior: 'smooth'
     });
   };
- 
+
   return (
     <footer id="contact" className="bg-[#0f2e5d] text-white text-xs border-t border-blue-900 relative pt-12 pb-6 text-left select-none font-sans">
-      
+
       {/* Scroll Top Button - Styled as the orange circle arrow on the right side */}
       <div className="absolute right-8 bottom-16 sm:bottom-20 z-20">
-        <button 
+        <button
           onClick={handleScrollTop}
           className="w-12 h-12 rounded-full bg-[#ff5500] hover:bg-orange-600 border-2 border-white/20 text-white flex items-center justify-center shadow-2xl transition-all transform hover:-translate-y-0.5 cursor-pointer"
           title="Scroll to Top"
@@ -25,21 +25,21 @@ export default function Footer() {
           <ArrowUp className="h-6 w-6 stroke-[3]" />
         </button>
       </div>
- 
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Main Content Grid */}
         <StaggerContainer staggerChildren={0.2} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">
-          
+
           {/* LEFT COLUMN: Logo Box and 3 Stats Pills */}
           <StaggerItem className="lg:col-span-5 space-y-4">
-            
+
             {/* Brand Logo Box */}
             <div className="bg-white p-2 rounded-lg flex items-center justify-center w-fit shadow-md border border-slate-100">
-              <img 
-                src={raabitaBannerImg} 
-                alt="JK Samadhan 2.0 | JK Raabita" 
-                className="h-10 object-contain" 
+              <img
+                src={raabitaBannerImg}
+                alt="JK Samadhan 2.0 | JK Raabita"
+                className="h-10 object-contain"
               />
             </div>
 
@@ -71,7 +71,7 @@ export default function Footer() {
 
           {/* RIGHT COLUMN: Contact Details */}
           <StaggerItem className="lg:col-span-7 space-y-6">
-            
+
             {/* Header: Call Contact */}
             <div className="flex items-center flex-wrap gap-2 text-base sm:text-lg font-bold">
               <span>Contact Us :</span>
@@ -84,7 +84,7 @@ export default function Footer() {
 
             {/* Office Locations */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              
+
               {/* Jammu Office */}
               <div className="space-y-2">
                 <h4 className="font-bold text-sm underline tracking-wide uppercase">

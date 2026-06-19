@@ -39,7 +39,7 @@ export default function HowItWorks() {
       <div className="absolute top-[52%] left-0 w-full h-0.5 bg-slate-100 dark:bg-slate-900 hidden lg:block pointer-events-none z-0"></div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        
+
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
           <span className="text-xs font-bold text-gov-saffron uppercase tracking-widest bg-amber-50 dark:bg-slate-900 px-3.5 py-1.5 rounded-full border border-amber-100 dark:border-slate-800">
@@ -57,7 +57,7 @@ export default function HowItWorks() {
         {/* Steps Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {steps.map((step, index) => (
-            <div 
+            <div
               key={step.num}
               className="bg-slate-50 dark:bg-slate-900/35 border border-slate-100 dark:border-slate-900 rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-md relative group"
             >
@@ -75,7 +75,7 @@ export default function HowItWorks() {
               <h3 className="font-display font-bold text-lg text-slate-900 dark:text-white mb-2">
                 {step.title}
               </h3>
-              
+
               <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
                 {step.desc}
               </p>

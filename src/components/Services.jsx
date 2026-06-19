@@ -72,7 +72,7 @@ export default function Services({ onLodgeClick, onTrackClick }) {
   return (
     <section id="services" className="py-20 bg-slate-50 dark:bg-slate-900/10 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Section Header */}
         <TextRevealGroup className="text-center max-w-3xl mx-auto mb-16 space-y-4">
           <TextRevealItem>
@@ -96,11 +96,11 @@ export default function Services({ onLodgeClick, onTrackClick }) {
         {/* Services Grid */}
         <StaggerContainer staggerChildren={0.15} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {services.map((service) => (
-            <StaggerItem 
+            <StaggerItem
               key={service.id}
               className="h-full"
             >
-              <div 
+              <div
                 onClick={service.action}
                 className="h-full bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-900 border-l-4 border-l-gov-saffron rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col justify-between"
                 style={{ borderLeftColor: service.color.replace('border-l-', 'var(--') }}
@@ -123,7 +123,7 @@ export default function Services({ onLodgeClick, onTrackClick }) {
                     {service.desc}
                   </p>
                 </div>
-                
+
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-gov-blue-medium dark:text-blue-400 mt-6 group-hover:translate-x-1 transition-transform self-start">
                   Proceed Now <ChevronRight className="h-3.5 w-3.5" />
                 </div>
@@ -136,7 +136,7 @@ export default function Services({ onLodgeClick, onTrackClick }) {
         {selectedService && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
             <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-xl max-w-md w-full p-6 relative border border-slate-100 dark:border-slate-800 animate-scaleUp">
-              <button 
+              <button
                 onClick={() => setSelectedService(null)}
                 className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-400 hover:text-slate-600 dark:hover:text-white"
               >
@@ -149,7 +149,7 @@ export default function Services({ onLodgeClick, onTrackClick }) {
               <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                 {selectedService.content}
               </p>
-              <button 
+              <button
                 onClick={() => setSelectedService(null)}
                 className="mt-6 w-full py-2 bg-gov-blue hover:bg-gov-blue-medium text-white rounded-lg text-sm font-semibold transition-colors"
               >

@@ -11,6 +11,7 @@ import Footer from './components/Footer';
 import GrievanceModal from './components/GrievanceModal';
 import TrackModal from './components/TrackModal';
 import AuthModal from './components/AuthModal';
+import VideoModal from './components/VideoModal';
 
 import './App.css';
 
@@ -22,6 +23,8 @@ function App() {
   const [isFaqOpen, setIsFaqOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [trackRefCode, setTrackRefCode] = useState('');
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const [videoType, setVideoType] = useState('login'); // 'login' or 'register'
 
   const handleLodgeGrievance = (mode = 'grievance') => {
     setGrievanceModalMode(mode);
@@ -38,23 +41,32 @@ function App() {
     setIsAuthOpen(true);
   };
 
+  const handleOpenVideo = (type) => {
+    setVideoType(type);
+    setIsVideoOpen(true);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
-      
+
       {/* Sticky Header */}
-      <Navbar 
-        onLodgeClick={() => handleLodgeGrievance('grievance')} 
+      <Navbar
+        onLodgeClick={() => handleLodgeGrievance('grievance')}
         onAppealClick={() => handleLodgeGrievance('appeal')}
         onTrackClick={() => handleTrackStatus('')}
         onAuthClick={handleOpenAuth}
         onFaqClick={() => setIsFaqOpen(true)}
+        onLmsClick={handleOpenVideo}
       />
 
       {/* Main Content Area */}
       <main className="flex-1">
 
         {/* Hero Section – fullscreen, Navbar overlays on top */}
-        <Hero />
+        <Hero 
+          onLodgeClick={() => handleLodgeGrievance('grievance')}
+          onTrackClick={() => handleTrackStatus('')}
+        />
 
         {/* Mobile App Section – Phone mockup with video background */}
         <MobileShowcase />
@@ -71,9 +83,9 @@ function App() {
       <Footer />
 
       {/* Interactive Modals */}
-      <GrievanceModal 
-        isOpen={isGrievanceOpen} 
-        onClose={() => setIsGrievanceOpen(false)} 
+      <GrievanceModal
+        isOpen={isGrievanceOpen}
+        onClose={() => setIsGrievanceOpen(false)}
         mode={grievanceModalMode}
         onLoginRedirect={() => {
           setIsGrievanceOpen(false);
@@ -84,25 +96,31 @@ function App() {
           handleOpenAuth('register');
         }}
       />
-      
-      <TrackModal 
-        isOpen={isTrackOpen} 
+
+      <TrackModal
+        isOpen={isTrackOpen}
         onClose={() => {
           setIsTrackOpen(false);
           setTrackRefCode('');
-        }} 
+        }}
         initialRefNum={trackRefCode}
       />
-      
-      <AuthModal 
-        isOpen={isAuthOpen} 
-        onClose={() => setIsAuthOpen(false)} 
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
         initialMode={authMode}
       />
 
-      <FAQ 
+      <FAQ
         isOpen={isFaqOpen}
         onClose={() => setIsFaqOpen(false)}
+      />
+
+      <VideoModal
+        isOpen={isVideoOpen}
+        onClose={() => setIsVideoOpen(false)}
+        videoType={videoType}
       />
     </div>
   );
