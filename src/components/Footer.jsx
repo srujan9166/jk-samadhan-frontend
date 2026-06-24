@@ -26,7 +26,7 @@ export default function Footer() {
         </button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full px-6 md:px-8">
 
         {/* Main Content Grid */}
         <StaggerContainer staggerChildren={0.2} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-8">

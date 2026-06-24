@@ -35,7 +35,7 @@ export default function MobileShowcase() {
       <div className="absolute bottom-1/4 left-10 w-96 h-96 bg-blue-200/25 rounded-full blur-[100px] z-0 pointer-events-none" />
 
       {/* ── Content wrapper sits above background ── */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 w-full px-4 sm:px-8 lg:px-16">
         
         {/* Title */}
         <div className="mb-12">
@@ -118,10 +118,10 @@ export default function MobileShowcase() {
           <ScrollReveal delay={0.2} className="lg:col-span-5 flex justify-center relative">
             
             {/* Background capsule outline from the screenshot */}
-            <div className="absolute w-[330px] h-[610px] bg-gradient-to-tr from-blue-100 to-indigo-50 rounded-[50px] -z-10 opacity-70 border-[8px] border-slate-200/50 shadow-md translate-y-2" />
+            <div className="absolute left-1/2 transform -translate-x-1/2 w-[330px] h-[610px] bg-gradient-to-tr from-blue-100 to-indigo-50 rounded-[50px] -z-10 opacity-70 border-[8px] border-slate-200/50 shadow-md translate-y-2" />
 
             {/* Floating Logo Badge */}
-            <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 lg:left-6 lg:translate-x-0 z-30 pointer-events-none">
+            <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
               <div className="bg-[#f8fafc]/95 backdrop-blur-md rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-slate-250 px-4 py-2 flex items-center gap-3 animate-float whitespace-nowrap pointer-events-auto">
                 {/* Left Logo */}
                 <div className="flex items-center gap-2">

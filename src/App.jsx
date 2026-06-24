@@ -63,10 +63,7 @@ function App() {
       <main className="flex-1">
 
         {/* Hero Section – fullscreen, Navbar overlays on top */}
-        <Hero 
-          onLodgeClick={() => handleLodgeGrievance('grievance')}
-          onTrackClick={() => handleTrackStatus('')}
-        />
+        <Hero />
 
         {/* Mobile App Section – Phone mockup with video background */}
         <MobileShowcase />

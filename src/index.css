@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Outfit', 'Inter', sans-serif;
+  --font-sans: 'Verdana', 'Geneva', 'Tahoma', sans-serif;
+  --font-display: 'Verdana', 'Geneva', 'Tahoma', sans-serif;
+  --font-serif: 'Verdana', 'Geneva', 'Tahoma', sans-serif;
+  --font-verdana: 'Verdana', 'Geneva', 'Tahoma', sans-serif;
 
   --color-gov-blue: #0b2240;
   --color-gov-blue-medium: #1e3a8a;

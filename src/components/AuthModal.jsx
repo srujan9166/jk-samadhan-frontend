@@ -32,6 +32,22 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
   });
   const [errors, setErrors] = useState({});
 
+  // Forgot Password State Variables
+  const [forgotMobile, setForgotMobile] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotEmailOtp, setForgotEmailOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
+  const [forgotCaptcha, setForgotCaptcha] = useState('');
+  const [otpSentForgot, setOtpSentForgot] = useState(false);
+  const [otpVerifiedForgot, setOtpVerifiedForgot] = useState(false);
+  const [otpSentForgotEmail, setOtpSentForgotEmail] = useState(false);
+  const [otpVerifiedForgotEmail, setOtpVerifiedForgotEmail] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const generateCaptcha = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let result = '';
@@ -74,6 +90,20 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
         captcha: ''
       });
       setErrors({});
+      setForgotMobile('');
+      setForgotOtp('');
+      setForgotEmail('');
+      setForgotEmailOtp('');
+      setForgotNewPassword('');
+      setForgotConfirmPassword('');
+      setForgotCaptcha('');
+      setOtpSentForgot(false);
+      setOtpVerifiedForgot(false);
+      setOtpSentForgotEmail(false);
+      setOtpVerifiedForgotEmail(false);
+      setForgotSuccess(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
     }
   }, [isOpen, initialMode]);
 
@@ -195,11 +225,134 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
       firstName: '', middleName: '', lastName: '', gender: '', dob: '',
       state: '', district: '', address: '', pincode: '', communicationLanguage: 'eng', captcha: ''
     });
+    setForgotMobile('');
+    setForgotOtp('');
+    setForgotEmail('');
+    setForgotEmailOtp('');
+    setForgotNewPassword('');
+    setForgotConfirmPassword('');
+    setForgotCaptcha('');
+    setOtpSentForgot(false);
+    setOtpVerifiedForgot(false);
+    setOtpSentForgotEmail(false);
+    setOtpVerifiedForgotEmail(false);
+    setForgotSuccess(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setStep(1);
     setOtpSent(false);
     setOtpVerified(false);
     setErrors({});
     onClose();
+  };
+
+  const handleSendOTPForgot = () => {
+    let err = { ...errors };
+    if (!forgotMobile.trim()) {
+      err.forgotMobile = 'Mobile number is required';
+      setErrors(err);
+      return;
+    }
+    if (!/^\d{10}$/.test(forgotMobile.replace(/[\s-+]/g, '').slice(-10))) {
+      err.forgotMobile = 'Enter a valid 10-digit mobile number';
+      setErrors(err);
+      return;
+    }
+    delete err.forgotMobile;
+    setErrors(err);
+    setOtpSentForgot(true);
+    alert("Mock OTP sent to: +91 " + forgotMobile);
+  };
+
+  const handleVerifyOTPForgot = () => {
+    let err = { ...errors };
+    if (!forgotOtp || forgotOtp.trim().length !== 6) {
+      err.forgotOtp = 'Please enter a valid 6-digit OTP';
+      setErrors(err);
+      return;
+    }
+    delete err.forgotOtp;
+    setErrors(err);
+    setOtpVerifiedForgot(true);
+  };
+
+  const handleSendOTPEmailForgot = () => {
+    let err = { ...errors };
+    if (!forgotEmail.trim()) {
+      err.forgotEmail = 'Email is required';
+      setErrors(err);
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail.trim())) {
+      err.forgotEmail = 'Enter a valid email address';
+      setErrors(err);
+      return;
+    }
+    delete err.forgotEmail;
+    setErrors(err);
+    setOtpSentForgotEmail(true);
+    alert("Mock OTP sent to email: " + forgotEmail);
+  };
+
+  const handleVerifyOTPEmailForgot = () => {
+    let err = { ...errors };
+    if (!forgotEmailOtp || forgotEmailOtp.trim().length !== 6) {
+      err.forgotEmailOtp = 'Please enter a valid 6-digit OTP';
+      setErrors(err);
+      return;
+    }
+    delete err.forgotEmailOtp;
+    setErrors(err);
+    setOtpVerifiedForgotEmail(true);
+  };
+
+  const handleForgotSubmit = (e) => {
+    e.preventDefault();
+    let err = {};
+
+    if (!forgotMobile.trim()) {
+      err.forgotMobile = 'Mobile number is required';
+    } else if (!otpSentForgot) {
+      err.forgotMobile = 'Please request an OTP first';
+    } else if (!otpVerifiedForgot) {
+      err.forgotOtp = 'Please verify your mobile number first';
+    }
+
+    if (mode === 'adminForgot') {
+      if (!forgotEmail.trim()) {
+        err.forgotEmail = 'Email is required';
+      } else if (!otpSentForgotEmail) {
+        err.forgotEmail = 'Please request an OTP first';
+      } else if (!otpVerifiedForgotEmail) {
+        err.forgotEmailOtp = 'Please verify your email first';
+      }
+    }
+
+    if (!forgotNewPassword) {
+      err.forgotNewPassword = 'New password is required';
+    } else {
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!passwordRegex.test(forgotNewPassword)) {
+        err.forgotNewPassword = 'Password does not meet strength requirements';
+      }
+    }
+
+    if (!forgotConfirmPassword) {
+      err.forgotConfirmPassword = 'Confirm password is required';
+    } else if (forgotNewPassword !== forgotConfirmPassword) {
+      err.forgotConfirmPassword = 'Passwords do not match';
+    }
+
+    if (!forgotCaptcha.trim()) {
+      err.forgotCaptcha = 'Captcha is required';
+    } else if (forgotCaptcha.trim().toUpperCase() !== captchaVal.toUpperCase()) {
+      err.forgotCaptcha = 'Captcha does not match';
+    }
+
+    setErrors(err);
+    if (Object.keys(err).length === 0) {
+      setForgotSuccess(true);
+    }
   };
 
   return (
@@ -211,14 +364,18 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
       <div className={`bg-[#f8fafc] rounded-2xl shadow-2xl w-full overflow-hidden motion-modal-content transform flex flex-col ${
         isOpen ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-4 opacity-0'
       } ${
-        mode === 'register' && step === 1 ? 'max-w-4xl' : 'max-w-3xl md:flex-row min-h-[460px]'
+        mode === 'forgot' || mode === 'adminForgot'
+          ? 'max-w-2xl min-h-[460px]'
+          : mode === 'register' && step === 1
+            ? 'max-w-4xl'
+            : 'max-w-3xl md:flex-row min-h-[460px]'
       } relative`}>
         
         {/* National tri-color accent strip */}
         <div className="absolute top-0 left-0 w-full h-[5px] bg-gradient-to-r from-[#ff9933] via-[#ffffff] to-[#13b183] z-30"></div>
         
         {/* CITIZEN / ADMIN LOGIN SPLIT VIEW LAYOUT */}
-        {(mode !== 'register' || step !== 1) && (
+        {(mode !== 'register' && mode !== 'forgot' && mode !== 'adminForgot' || step !== 1) && (
           <>
             {/* LEFT BRANDING PANE */}
             <div className="hidden md:flex md:w-[320px] bg-gradient-to-b from-[#0c408f] to-[#041a3f] text-white p-8 flex-col justify-center gap-8 relative overflow-hidden select-none">
@@ -345,7 +502,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                       <div className="text-right">
                         <button 
                           type="button" 
-                          onClick={() => alert("Password reset functionality is under maintenance.")}
+                          onClick={() => { setMode('adminForgot'); setErrors({}); }}
                           className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
                         >
                           Forgot Password?
@@ -412,7 +569,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                       <div className="text-right">
                         <button 
                           type="button" 
-                          onClick={() => alert("Password reset functionality is under maintenance.")}
+                          onClick={() => { setMode('forgot'); setErrors({}); }}
                           className="text-xs font-bold text-blue-600 hover:underline cursor-pointer"
                         >
                           Forgot Password?
@@ -818,6 +975,477 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
             </div>
 
           </form>
+        </div>
+      </>
+    )}
+
+    {/* CITIZEN FORGOT PASSWORD FULL WIDTH VIEW LAYOUT */}
+    {mode === 'forgot' && (
+      <>
+        {/* Close button */}
+        <button 
+          onClick={onClose} 
+          className="absolute top-5 right-5 p-1.5 rounded-full bg-slate-200/60 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors z-20 cursor-pointer"
+        >
+          <X className="h-4.5 w-4.5" />
+        </button>
+
+        {/* FORGOT PASSWORD FORM BODY */}
+        <div className="p-8 md:p-10 space-y-6 text-left bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] bg-[#f8fafc]">
+          <h3 className="text-xl font-bold text-[#0c408f] tracking-wide uppercase text-center mb-6">
+            Citizen Forgot Password
+          </h3>
+
+          {forgotSuccess ? (
+            <div className="w-full max-w-sm mx-auto py-6 text-center space-y-4 flex flex-col items-center">
+              <div className="w-14 h-14 rounded-full bg-emerald-50 text-[#13b183] flex items-center justify-center border border-emerald-100 shadow-sm">
+                <CheckCircle2 className="h-9 w-9 animate-bounce" />
+              </div>
+              <h4 className="text-base font-bold text-slate-900">Update Successful</h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Your password has been reset successfully. You can now use your new password to log in.
+              </p>
+              <button 
+                onClick={() => {
+                  setMode('login');
+                  setForgotSuccess(false);
+                  setErrors({});
+                }}
+                className="w-full py-3 bg-gradient-to-r from-[#0c408f] to-[#13b183] hover:from-[#0a3576] hover:to-[#0f966e] text-white font-extrabold rounded-xl text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 cursor-pointer mt-4"
+              >
+                Go to Login
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotSubmit} className="space-y-4">
+              {/* Row 1: Mobile no and OTP Mobile */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Mobile Input Group */}
+                <div>
+                  <div className="flex border border-slate-300 rounded-full overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100/50 bg-white">
+                    <input 
+                      type="tel" 
+                      placeholder="Mobile no*" 
+                      value={forgotMobile}
+                      onChange={(e) => setForgotMobile(e.target.value)}
+                      disabled={otpSentForgot && otpVerifiedForgot}
+                      className="flex-1 px-4 py-2.5 text-sm bg-transparent outline-none text-slate-800 placeholder-slate-400 w-full"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleSendOTPForgot}
+                      disabled={otpVerifiedForgot}
+                      className="bg-[#2563eb] hover:bg-blue-600 text-white font-bold text-xs px-5 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      {otpSentForgot ? 'Resend OTP' : 'Send OTP'}
+                    </button>
+                  </div>
+                  {errors.forgotMobile && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotMobile}</p>}
+                  {otpSentForgot && !otpVerifiedForgot && <p className="text-[10px] text-emerald-600 mt-1 pl-4">OTP sent successfully!</p>}
+                </div>
+
+                {/* OTP Input Group */}
+                <div>
+                  <div className="flex border border-slate-300 rounded-full overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100/50 bg-white">
+                    <input 
+                      type="text" 
+                      placeholder="OTP Mobile*" 
+                      value={forgotOtp}
+                      onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                      disabled={otpVerifiedForgot}
+                      className="flex-1 px-4 py-2.5 text-sm bg-transparent outline-none text-slate-800 placeholder-slate-400 w-full"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleVerifyOTPForgot}
+                      disabled={!otpSentForgot || otpVerifiedForgot}
+                      className="bg-[#4f46e5] hover:bg-indigo-600 text-white font-bold text-xs px-6 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      Verify
+                    </button>
+                  </div>
+                  {errors.forgotOtp && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotOtp}</p>}
+                  {otpVerifiedForgot && <p className="text-[10px] text-emerald-600 mt-1 pl-4">Mobile verified!</p>}
+                </div>
+              </div>
+
+              {/* Row 2: New Password */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">New Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
+                  <input 
+                    type={showNewPassword ? 'text' : 'password'} 
+                    value={forgotNewPassword}
+                    placeholder="New Password"
+                    onChange={(e) => setForgotNewPassword(e.target.value)}
+                    className={`w-full bg-white border ${errors.forgotNewPassword ? 'border-red-500 bg-red-50/10' : 'border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100/50'} rounded-full pl-11 pr-10 py-2.5 text-sm outline-none text-slate-800 transition-all placeholder-slate-400`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showNewPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                  </button>
+                </div>
+                {errors.forgotNewPassword && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotNewPassword}</p>}
+              </div>
+
+              {/* Row 3: Confirm Password */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Confirm Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
+                  <input 
+                    type={showConfirmPassword ? 'text' : 'password'} 
+                    value={forgotConfirmPassword}
+                    placeholder="Confirm Password"
+                    onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                    className={`w-full bg-white border ${errors.forgotConfirmPassword ? 'border-red-500 bg-red-50/10' : 'border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100/50'} rounded-full pl-11 pr-10 py-2.5 text-sm outline-none text-slate-800 transition-all placeholder-slate-400`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                  </button>
+                </div>
+                {errors.forgotConfirmPassword && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotConfirmPassword}</p>}
+              </div>
+
+              {/* Row 4: Captcha */}
+              <div className="space-y-1.5 text-left">
+                <label className="block text-xs font-bold text-slate-700">Enter Captcha</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <input 
+                      type="text" 
+                      placeholder="Enter Captcha" 
+                      value={forgotCaptcha}
+                      onChange={(e) => setForgotCaptcha(e.target.value)}
+                      className={`w-full bg-white border ${errors.forgotCaptcha ? 'border-red-500 bg-red-50/10' : 'border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100/50'} rounded-full px-5 py-2.5 text-sm outline-none text-slate-800 transition-all placeholder-slate-400`}
+                    />
+                    {errors.forgotCaptcha && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotCaptcha}</p>}
+                  </div>
+                  
+                  {/* Captcha display styling */}
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="px-4 py-2 bg-pink-50 border border-pink-100 rounded-xl font-mono font-bold tracking-widest text-lg text-slate-800 relative overflow-hidden select-none"
+                      style={{
+                        backgroundImage: 'repeating-linear-gradient(45deg, #fbcfe8 0px, #fbcfe8 1px, transparent 1px, transparent 10px)',
+                        textDecoration: 'line-through',
+                        textDecorationStyle: 'double',
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.15)'
+                      }}
+                    >
+                      <span className="inline-block transform -rotate-3">{captchaVal}</span>
+                    </div>
+                    
+                    <button 
+                      type="button" 
+                      onClick={handleRefreshCaptcha}
+                      className="p-2.5 rounded-full border border-slate-200 hover:bg-slate-100 text-blue-600 transition-colors cursor-pointer"
+                      title="Refresh Captcha"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 fill-none stroke-current" strokeWidth="3">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l.56-.56" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Note Banner */}
+              <div className="bg-red-50/80 border border-red-100/50 rounded-xl p-4 text-[11px] text-red-600 font-semibold leading-relaxed text-left">
+                Note: The new password must include at least 8 alphanumeric characters with at least 1 uppercase letter, 1 lowercase letter, 1 digit, and 1 special character from the set @$!%*?&.
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-center pt-2">
+                <button
+                  type="submit"
+                  className="w-full md:w-auto md:px-12 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold rounded-full text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 cursor-pointer uppercase tracking-wider"
+                >
+                  Update
+                </button>
+              </div>
+
+              {/* Back to Login Link */}
+              <div className="text-center pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => { setMode('login'); setErrors({}); }} 
+                  className="text-xs text-blue-600 hover:underline font-bold cursor-pointer"
+                >
+                  Back to Login
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </>
+    )}
+
+    {/* ADMINISTRATIVE FORGOT PASSWORD FULL WIDTH VIEW LAYOUT */}
+    {mode === 'adminForgot' && (
+      <>
+        {/* Close button */}
+        <button 
+          onClick={onClose} 
+          className="absolute top-5 right-5 p-1.5 rounded-full bg-slate-200/60 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors z-20 cursor-pointer"
+        >
+          <X className="h-4.5 w-4.5" />
+        </button>
+
+        {/* FORGOT PASSWORD FORM BODY */}
+        <div className="p-8 md:p-10 space-y-6 text-left bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] bg-[#f8fafc]">
+          <h3 className="text-xl font-bold text-[#0c408f] tracking-wide uppercase text-center mb-6">
+            Administrative Forgot Password
+          </h3>
+
+          {forgotSuccess ? (
+            <div className="w-full max-w-sm mx-auto py-6 text-center space-y-4 flex flex-col items-center">
+              <div className="w-14 h-14 rounded-full bg-emerald-50 text-[#13b183] flex items-center justify-center border border-emerald-100 shadow-sm">
+                <CheckCircle2 className="h-9 w-9 animate-bounce" />
+              </div>
+              <h4 className="text-base font-bold text-slate-900">Update Successful</h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Your password has been reset successfully. You can now use your new password to log in.
+              </p>
+              <button 
+                onClick={() => {
+                  setMode('admin');
+                  setForgotSuccess(false);
+                  setErrors({});
+                }}
+                className="w-full py-3 bg-gradient-to-r from-[#0c408f] to-[#13b183] hover:from-[#0a3576] hover:to-[#0f966e] text-white font-extrabold rounded-xl text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 cursor-pointer mt-4"
+              >
+                Go to Login
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotSubmit} className="space-y-4">
+              {/* Row 1: Mobile no and OTP Mobile */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Mobile Input Group */}
+                <div>
+                  <div className="flex border border-slate-300 rounded-full overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100/50 bg-white">
+                    <input 
+                      type="tel" 
+                      placeholder="Mobile no*" 
+                      value={forgotMobile}
+                      onChange={(e) => setForgotMobile(e.target.value)}
+                      disabled={otpSentForgot && otpVerifiedForgot}
+                      className="flex-1 px-4 py-2.5 text-sm bg-transparent outline-none text-slate-800 placeholder-slate-400 w-full"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleSendOTPForgot}
+                      disabled={otpVerifiedForgot}
+                      className="bg-[#2563eb] hover:bg-blue-600 text-white font-bold text-xs px-5 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      {otpSentForgot ? 'Resend OTP' : 'Send OTP'}
+                    </button>
+                  </div>
+                  {errors.forgotMobile && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotMobile}</p>}
+                  {otpSentForgot && !otpVerifiedForgot && <p className="text-[10px] text-emerald-600 mt-1 pl-4">OTP sent successfully!</p>}
+                </div>
+
+                {/* OTP Input Group */}
+                <div>
+                  <div className="flex border border-slate-300 rounded-full overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100/50 bg-white">
+                    <input 
+                      type="text" 
+                      placeholder="OTP Mobile*" 
+                      value={forgotOtp}
+                      onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                      disabled={otpVerifiedForgot}
+                      className="flex-1 px-4 py-2.5 text-sm bg-transparent outline-none text-slate-800 placeholder-slate-400 w-full"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleVerifyOTPForgot}
+                      disabled={!otpSentForgot || otpVerifiedForgot}
+                      className="bg-[#4f46e5] hover:bg-indigo-600 text-white font-bold text-xs px-6 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      Verify
+                    </button>
+                  </div>
+                  {errors.forgotOtp && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotOtp}</p>}
+                  {otpVerifiedForgot && <p className="text-[10px] text-emerald-600 mt-1 pl-4">Mobile verified!</p>}
+                </div>
+              </div>
+
+              {/* Row 2: Email ID and OTP Email */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Email Input Group */}
+                <div>
+                  <div className="flex border border-slate-300 rounded-full overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100/50 bg-white">
+                    <input 
+                      type="email" 
+                      placeholder="Email ID*" 
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      disabled={otpSentForgotEmail && otpVerifiedForgotEmail}
+                      className="flex-1 px-4 py-2.5 text-sm bg-transparent outline-none text-slate-800 placeholder-slate-400 w-full"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleSendOTPEmailForgot}
+                      disabled={otpVerifiedForgotEmail}
+                      className="bg-[#2563eb] hover:bg-blue-600 text-white font-bold text-xs px-5 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      {otpSentForgotEmail ? 'Resend OTP' : 'Send OTP'}
+                    </button>
+                  </div>
+                  {errors.forgotEmail && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotEmail}</p>}
+                  {otpSentForgotEmail && !otpVerifiedForgotEmail && <p className="text-[10px] text-emerald-600 mt-1 pl-4">OTP sent successfully!</p>}
+                </div>
+
+                {/* OTP Email Input Group */}
+                <div>
+                  <div className="flex border border-slate-300 rounded-full overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100/50 bg-white">
+                    <input 
+                      type="text" 
+                      placeholder="OTP Email*" 
+                      value={forgotEmailOtp}
+                      onChange={(e) => setForgotEmailOtp(e.target.value.replace(/\D/g, ''))}
+                      disabled={otpVerifiedForgotEmail}
+                      className="flex-1 px-4 py-2.5 text-sm bg-transparent outline-none text-slate-800 placeholder-slate-400 w-full"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={handleVerifyOTPEmailForgot}
+                      disabled={!otpSentForgotEmail || otpVerifiedForgotEmail}
+                      className="bg-[#4f46e5] hover:bg-indigo-600 text-white font-bold text-xs px-6 transition-colors whitespace-nowrap cursor-pointer disabled:opacity-50"
+                    >
+                      Verify
+                    </button>
+                  </div>
+                  {errors.forgotEmailOtp && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotEmailOtp}</p>}
+                  {otpVerifiedForgotEmail && <p className="text-[10px] text-emerald-600 mt-1 pl-4">Email verified!</p>}
+                </div>
+              </div>
+
+              {/* Row 3: New Password */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">New Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
+                  <input 
+                    type={showNewPassword ? 'text' : 'password'} 
+                    value={forgotNewPassword}
+                    placeholder="New Password"
+                    onChange={(e) => setForgotNewPassword(e.target.value)}
+                    className={`w-full bg-white border ${errors.forgotNewPassword ? 'border-red-500 bg-red-50/10' : 'border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100/50'} rounded-full pl-11 pr-10 py-2.5 text-sm outline-none text-slate-800 transition-all placeholder-slate-400`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showNewPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                  </button>
+                </div>
+                {errors.forgotNewPassword && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotNewPassword}</p>}
+              </div>
+
+              {/* Row 4: Confirm Password */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Confirm Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4.5 w-4.5 text-slate-400" />
+                  <input 
+                    type={showConfirmPassword ? 'text' : 'password'} 
+                    value={forgotConfirmPassword}
+                    placeholder="Confirm Password"
+                    onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                    className={`w-full bg-white border ${errors.forgotConfirmPassword ? 'border-red-500 bg-red-50/10' : 'border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100/50'} rounded-full pl-11 pr-10 py-2.5 text-sm outline-none text-slate-800 transition-all placeholder-slate-400`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+                  </button>
+                </div>
+                {errors.forgotConfirmPassword && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotConfirmPassword}</p>}
+              </div>
+
+              {/* Row 5: Captcha */}
+              <div className="space-y-1.5 text-left">
+                <label className="block text-xs font-bold text-slate-700">Enter Captcha</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex-1 min-w-[200px]">
+                    <input 
+                      type="text" 
+                      placeholder="Enter Captcha" 
+                      value={forgotCaptcha}
+                      onChange={(e) => setForgotCaptcha(e.target.value)}
+                      className={`w-full bg-white border ${errors.forgotCaptcha ? 'border-red-500 bg-red-50/10' : 'border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100/50'} rounded-full px-5 py-2.5 text-sm outline-none text-slate-800 transition-all placeholder-slate-400`}
+                    />
+                    {errors.forgotCaptcha && <p className="text-[10px] text-red-500 mt-1 pl-4">{errors.forgotCaptcha}</p>}
+                  </div>
+                  
+                  {/* Captcha display styling */}
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="px-4 py-2 bg-pink-50 border border-pink-100 rounded-xl font-mono font-bold tracking-widest text-lg text-slate-800 relative overflow-hidden select-none"
+                      style={{
+                        backgroundImage: 'repeating-linear-gradient(45deg, #fbcfe8 0px, #fbcfe8 1px, transparent 1px, transparent 10px)',
+                        textDecoration: 'line-through',
+                        textDecorationStyle: 'double',
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.15)'
+                      }}
+                    >
+                      <span className="inline-block transform -rotate-3">{captchaVal}</span>
+                    </div>
+                    
+                    <button 
+                      type="button" 
+                      onClick={handleRefreshCaptcha}
+                      className="p-2.5 rounded-full border border-slate-200 hover:bg-slate-100 text-blue-600 transition-colors cursor-pointer"
+                      title="Refresh Captcha"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 fill-none stroke-current" strokeWidth="3">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l.56-.56" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Note Banner */}
+              <div className="bg-red-50/80 border border-red-100/50 rounded-xl p-4 text-[11px] text-red-600 font-semibold leading-relaxed text-left">
+                Note: The new password must include at least 8 alphanumeric characters with at least 1 uppercase letter, 1 lowercase letter, 1 digit, and 1 special character from the set @$!%*?&.
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-center pt-2">
+                <button
+                  type="submit"
+                  className="w-full md:w-auto md:px-12 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold rounded-full text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 cursor-pointer uppercase tracking-wider"
+                >
+                  Update
+                </button>
+              </div>
+
+              {/* Back to Login Link */}
+              <div className="text-center pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => { setMode('admin'); setErrors({}); }} 
+                  className="text-xs text-blue-600 hover:underline font-bold cursor-pointer"
+                >
+                  Back to Login
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </>
     )}
