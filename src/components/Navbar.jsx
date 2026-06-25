@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PlaySquare, Accessibility, Sun, Moon, Volume2, ChevronDown, Globe, Menu, X, MapPin, FileText, UserPlus, LogIn } from 'lucide-react';
+import { PlaySquare, Accessibility, Sun, Moon, Volume2, ChevronDown, Globe, Menu, X, MapPin, FileText, UserPlus, LogIn, Bell, User, LogOut } from 'lucide-react';
 import emblemImg from '../assets/emblem.png';
 import logoImg from '../assets/logo.png';
 
-export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAuthClick, onFaqClick, onLmsClick }) {
+export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAuthClick, onFaqClick, onLmsClick, isLoggedIn, user, onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [theme, setTheme] = useState('light');
@@ -149,40 +149,83 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
             <span>CPGrams</span>
           </button>
 
-          <button 
-            onClick={() => onAuthClick('register')}
-            className="h-9 px-4 bg-[#f06e30] hover:bg-[#d8581b] text-white text-[14px] font-medium rounded-[4px] flex items-center gap-1.5 transition-colors cursor-pointer border-0 shadow-sm"
-          >
-            <UserPlus className="h-4 w-4" />
-            <span>Register</span>
-          </button>
+          {isLoggedIn ? (
+            <div className="flex items-center gap-4">
+              {/* Notification bell */}
+              <button className="relative p-1.5 text-slate-500 hover:text-[#164581] rounded-full hover:bg-slate-100 transition-colors cursor-pointer border-0 bg-transparent" title="Notifications">
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-1 right-1 w-4.5 h-4.5 bg-red-650 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white leading-none">
+                  0
+                </span>
+              </button>
 
-          <div className="relative" ref={loginRef}>
-            <button 
-              onClick={() => setLoginOpen(!loginOpen)}
-              className="h-9 px-4 bg-[#164581] hover:bg-[#07172b] text-white text-[14px] font-medium rounded-[4px] flex items-center gap-1.5 transition-colors cursor-pointer border-0 shadow-sm"
-            >
-              <LogIn className="h-4 w-4" />
-              <span>Login</span>
-              <ChevronDown className="h-3 w-3 opacity-80" />
-            </button>
-            {loginOpen && (
-              <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-[4px] shadow-lg py-1 z-50 text-left">
+              {/* Profile dropdown */}
+              <div className="relative" ref={loginRef}>
                 <button 
-                  onClick={() => { setLoginOpen(false); onAuthClick('login'); }}
-                  className="w-full text-left px-4 py-2 text-[14px] font-medium text-slate-700 hover:bg-slate-50 hover:text-[#164581] cursor-pointer bg-transparent border-0"
+                  onClick={() => setLoginOpen(!loginOpen)}
+                  className="h-9 px-3.5 border border-slate-300 hover:bg-slate-50 text-slate-700 text-[13px] font-bold rounded flex items-center gap-2 transition-colors cursor-pointer bg-white"
                 >
-                  Citizen Login
+                  <div className="w-5.5 h-5.5 rounded-full bg-[#164581]/10 text-[#164581] flex items-center justify-center font-bold">
+                    <User className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="max-w-[150px] truncate text-slate-800 font-sans">{user?.name || 'sai srujan rallabandi'}</span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60 text-slate-700" />
                 </button>
-                <button 
-                  onClick={() => { setLoginOpen(false); onAuthClick('admin'); }}
-                  className="w-full text-left px-4 py-2 text-[14px] font-medium text-slate-700 hover:bg-slate-50 hover:text-[#164581] cursor-pointer bg-transparent border-0"
-                >
-                  Official Login
-                </button>
+                {loginOpen && (
+                  <div className="absolute right-0 mt-1.5 w-48 bg-white border border-slate-200 rounded shadow-lg py-1.5 z-50 text-left font-sans">
+                    <div className="px-4 py-2 border-b border-slate-100">
+                      <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Logged in as</span>
+                      <span className="block text-xs font-bold text-slate-800 truncate">{user?.email || 'sai@samadhan.jk.gov.in'}</span>
+                    </div>
+                    <button 
+                      onClick={() => { setLoginOpen(false); onLogout(); }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-650 hover:bg-red-50 cursor-pointer bg-transparent border-0 flex items-center gap-1.5"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <>
+              <button 
+                onClick={() => onAuthClick('register')}
+                className="h-9 px-4 bg-[#f06e30] hover:bg-[#d8581b] text-white text-[14px] font-medium rounded-[4px] flex items-center gap-1.5 transition-colors cursor-pointer border-0 shadow-sm"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span>Register</span>
+              </button>
+
+              <div className="relative" ref={loginRef}>
+                <button 
+                  onClick={() => setLoginOpen(!loginOpen)}
+                  className="h-9 px-4 bg-[#164581] hover:bg-[#07172b] text-white text-[14px] font-medium rounded-[4px] flex items-center gap-1.5 transition-colors cursor-pointer border-0 shadow-sm"
+                >
+                  <LogIn className="h-4 w-4" />
+                  <span>Login</span>
+                  <ChevronDown className="h-3 w-3 opacity-80" />
+                </button>
+                {loginOpen && (
+                  <div className="absolute right-0 mt-1 w-40 bg-white border border-slate-200 rounded-[4px] shadow-lg py-1 z-50 text-left">
+                    <button 
+                      onClick={() => { setLoginOpen(false); onAuthClick('login'); }}
+                      className="w-full text-left px-4 py-2 text-[14px] font-medium text-slate-700 hover:bg-slate-50 hover:text-[#164581] cursor-pointer bg-transparent border-0"
+                    >
+                      Citizen Login
+                    </button>
+                    <button 
+                      onClick={() => { setLoginOpen(false); onAuthClick('admin'); }}
+                      className="w-full text-left px-4 py-2 text-[14px] font-medium text-slate-700 hover:bg-slate-50 hover:text-[#164581] cursor-pointer bg-transparent border-0"
+                    >
+                      Official Login
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Toggle Button */}

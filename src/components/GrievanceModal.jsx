@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, FileText, User, Mail, Phone, MapPin, Building, ChevronRight, ChevronLeft, CheckCircle2, ShieldCheck, AlertCircle, Lock, Info } from 'lucide-react';
 
-export default function GrievanceModal({ isOpen, onClose, mode = 'grievance', onLoginRedirect, onRegisterRedirect }) {
+export default function GrievanceModal({ isOpen, onClose, mode = 'grievance', onLoginRedirect, onRegisterRedirect, isLoggedIn, user, onGrievanceSubmit }) {
   const [step, setStep] = useState(1);
   const [isGated, setIsGated] = useState(true);
   const [formData, setFormData] = useState({
@@ -23,13 +23,13 @@ export default function GrievanceModal({ isOpen, onClose, mode = 'grievance', on
 
   React.useEffect(() => {
     if (isOpen) {
-      setIsGated(true);
+      setIsGated(!isLoggedIn);
       setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        district: '',
-        address: '',
+        name: isLoggedIn && user ? user.name : '',
+        email: isLoggedIn && user ? user.email : '',
+        phone: isLoggedIn && user ? user.phone : '',
+        district: isLoggedIn && user ? user.district : '',
+        address: isLoggedIn && user ? user.address : '',
         department: '',
         category: '',
         subject: '',
@@ -42,7 +42,7 @@ export default function GrievanceModal({ isOpen, onClose, mode = 'grievance', on
       setErrors({});
       setRefNum('');
     }
-  }, [isOpen]);
+  }, [isOpen, isLoggedIn, user]);
 
   const districts = [
     'Srinagar', 'Jammu', 'Anantnag', 'Baramulla', 'Kathua', 
@@ -130,6 +130,19 @@ export default function GrievanceModal({ isOpen, onClose, mode = 'grievance', on
       const randomRef = prefix + '-' + Math.floor(100000 + Math.random() * 900000) + '-' + new Date().getFullYear();
       setRefNum(randomRef);
       setStep(4);
+      if (onGrievanceSubmit) {
+        onGrievanceSubmit({
+          refNum: randomRef,
+          type: mode,
+          department: formData.department,
+          category: formData.category,
+          subject: formData.subject,
+          description: formData.description,
+          date: new Date().toLocaleDateString('en-GB'),
+          status: 'Pending',
+          source: 'Web'
+        });
+      }
     }
   };
 

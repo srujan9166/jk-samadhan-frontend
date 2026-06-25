@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { X, Lock, Phone, User, CheckCircle2, ShieldCheck, Mail, ShieldAlert, KeyRound, Eye, EyeOff } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
-export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
+export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLoginSuccess }) {
   const [mode, setMode] = useState(initialMode); // 'login', 'register', or 'admin'
   const [step, setStep] = useState(1); // 1: Input details, 2: OTP verification, 3: Success
   const [showPassword, setShowPassword] = useState(false);
   const [captchaVal, setCaptchaVal] = useState('NK4KG4');
+  const [captchaId, setCaptchaId] = useState('');
+  const [captchaImage, setCaptchaImage] = useState('');
+  const [forgotCaptchaVal, setForgotCaptchaVal] = useState('NK4KG4');
+  const [regCredentials, setRegCredentials] = useState(null);
+  const [loggedInUser, setLoggedInUser] = useState(null);
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
 
@@ -48,7 +53,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const generateCaptcha = () => {
+  const generateLocalCaptchaText = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let result = '';
     for (let i = 0; i < 6; i++) {
@@ -57,8 +62,27 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     return result;
   };
 
+  const fetchCaptcha = async () => {
+    try {
+      const res = await fetch('http://localhost:8080/auth/captcha', {
+        method: 'POST'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCaptchaId(data.captchaId);
+        setCaptchaImage(data.captchaImage);
+      }
+    } catch (err) {
+      console.error("Error fetching captcha:", err);
+    }
+  };
+
   const handleRefreshCaptcha = () => {
-    setCaptchaVal(generateCaptcha());
+    if (mode === 'forgot' || mode === 'adminForgot') {
+      setForgotCaptchaVal(generateLocalCaptchaText());
+    } else {
+      fetchCaptcha();
+    }
   };
 
   // Reset state when modal is opened or initialMode changes
@@ -69,7 +93,10 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
       setShowPassword(false);
       setOtpSent(false);
       setOtpVerified(false);
-      setCaptchaVal(generateCaptcha());
+      setRegCredentials(null);
+      setLoggedInUser(null);
+      fetchCaptcha();
+      setForgotCaptchaVal(generateLocalCaptchaText());
       setFormData({
         mobile: '',
         name: '',
@@ -123,10 +150,40 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     return Object.keys(err).length === 0;
   };
 
-  const handleSendOTP = (e) => {
+  const handleSendOTP = async (e) => {
     e.preventDefault();
     if (validateLogin()) {
-      setStep(2);
+      try {
+        const res = await fetch('http://localhost:8080/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            mobile: formData.mobile,
+            password: formData.password
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('token', data.token);
+          setLoggedInUser(data.user);
+          setStep(2);
+          setErrors({});
+          alert("Mock OTP sent to: +91 " + formData.mobile);
+        } else {
+          const errMsg = await res.text();
+          let parsedErr = errMsg;
+          try {
+            const parsed = JSON.parse(errMsg);
+            parsedErr = parsed.message || parsed.error || errMsg;
+          } catch(e){}
+          setErrors({ password: parsedErr || 'Invalid mobile number or password' });
+        }
+      } catch (err) {
+        console.error("Login error:", err);
+        setErrors({ password: 'Connection to server failed' });
+      }
     }
   };
 
@@ -139,7 +196,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     setStep(3);
   };
 
-  const handleAdminLogin = (e) => {
+  const handleAdminLogin = async (e) => {
     e.preventDefault();
     let err = {};
     if (!formData.username.trim()) {
@@ -151,7 +208,35 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     
     setErrors(err);
     if (Object.keys(err).length === 0) {
-      setStep(3);
+      try {
+        const res = await fetch('http://localhost:8080/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            mobile: formData.username,
+            password: formData.password
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('token', data.token);
+          setLoggedInUser(data.user);
+          setStep(3);
+        } else {
+          const errMsg = await res.text();
+          let parsedErr = errMsg;
+          try {
+            const parsed = JSON.parse(errMsg);
+            parsedErr = parsed.message || parsed.error || errMsg;
+          } catch(e){}
+          setErrors({ password: parsedErr || 'Invalid administrative credentials' });
+        }
+      } catch (err) {
+        console.error("Admin login error:", err);
+        setErrors({ password: 'Connection to server failed' });
+      }
     }
   };
 
@@ -185,7 +270,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     setOtpVerified(true);
   };
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     let err = {};
     if (!formData.firstName.trim()) err.firstName = 'First name is required';
@@ -209,13 +294,51 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     
     if (!formData.captcha.trim()) {
       err.captcha = 'Captcha is required';
-    } else if (formData.captcha.trim().toUpperCase() !== captchaVal.toUpperCase()) {
-      err.captcha = 'Captcha does not match';
     }
     
     setErrors(err);
     if (Object.keys(err).length === 0) {
-      setStep(3);
+      try {
+        const payload = {
+          firstName: formData.firstName,
+          middleName: formData.middleName,
+          lastName: formData.lastName,
+          username: formData.email || formData.mobile,
+          email: formData.email,
+          gender: formData.gender,
+          dateOfBirth: formData.dob,
+          mobile: formData.mobile,
+          address: formData.address,
+          pincode: formData.pincode,
+          state: formData.state,
+          district: formData.district,
+          captchaId: captchaId,
+          captchaCode: formData.captcha
+        };
+        const res = await fetch('http://localhost:8080/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setRegCredentials(data);
+          setStep(3);
+        } else {
+          const errMsg = await res.text();
+          let parsedErr = errMsg;
+          try {
+            const parsed = JSON.parse(errMsg);
+            parsedErr = parsed.message || parsed.error || errMsg;
+          } catch(e){}
+          setErrors({ captcha: parsedErr || 'Registration failed' });
+        }
+      } catch (err) {
+        console.error("Registration error:", err);
+        setErrors({ captcha: 'Connection to server failed' });
+      }
     }
   };
 
@@ -244,6 +367,34 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     setOtpVerified(false);
     setErrors({});
     onClose();
+  };
+
+  const handleDoneClick = () => {
+    if (onLoginSuccess) {
+      if (loggedInUser) {
+        onLoginSuccess(loggedInUser);
+      } else {
+        const name = mode === 'register' 
+          ? `${formData.firstName} ${formData.lastName}` 
+          : (mode === 'admin' ? 'Administrator' : 'sai srujan rallabandi');
+        const email = mode === 'register' 
+          ? formData.email 
+          : (mode === 'admin' ? formData.username : 'sai@samadhan.jk.gov.in');
+        const phone = mode === 'admin' ? '1905' : formData.mobile;
+        const district = mode === 'register' ? formData.district : 'Jammu';
+        const address = mode === 'register' ? formData.address : 'Sector 3, Channi Himmat';
+
+        onLoginSuccess({
+          name,
+          email,
+          phone,
+          district,
+          address,
+          role: mode === 'admin' ? 'admin' : 'citizen'
+        });
+      }
+    }
+    handleReset();
   };
 
   const handleSendOTPForgot = () => {
@@ -306,7 +457,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
     setOtpVerifiedForgotEmail(true);
   };
 
-  const handleForgotSubmit = (e) => {
+  const handleForgotSubmit = async (e) => {
     e.preventDefault();
     let err = {};
 
@@ -345,13 +496,39 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
 
     if (!forgotCaptcha.trim()) {
       err.forgotCaptcha = 'Captcha is required';
-    } else if (forgotCaptcha.trim().toUpperCase() !== captchaVal.toUpperCase()) {
+    } else if (forgotCaptcha.trim().toUpperCase() !== forgotCaptchaVal.toUpperCase()) {
       err.forgotCaptcha = 'Captcha does not match';
     }
 
     setErrors(err);
     if (Object.keys(err).length === 0) {
-      setForgotSuccess(true);
+      try {
+        const res = await fetch('http://localhost:8080/auth/forgot-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            mobile: forgotMobile,
+            password: forgotNewPassword,
+            confirmPassword: forgotConfirmPassword
+          })
+        });
+        if (res.ok) {
+          setForgotSuccess(true);
+        } else {
+          const errMsg = await res.text();
+          let parsedErr = errMsg;
+          try {
+            const parsed = JSON.parse(errMsg);
+            parsedErr = parsed.message || parsed.error || errMsg;
+          } catch(e){}
+          setErrors({ forgotCaptcha: parsedErr || 'Password reset failed' });
+        }
+      } catch (err) {
+        console.error("Forgot password error:", err);
+        setErrors({ forgotCaptcha: 'Connection to server failed' });
+      }
     }
   };
 
@@ -661,20 +838,58 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                   <div className="w-14 h-14 rounded-full bg-emerald-50 text-[#13b183] flex items-center justify-center border border-emerald-100 shadow-sm">
                     <CheckCircle2 className="h-9 w-9 animate-bounce" />
                   </div>
-                  <h4 className="text-base font-bold text-slate-900">Authentication Successful</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    {mode === 'admin' ? (
-                      <span>Welcome back, <strong>Administrator</strong>. You have been successfully authenticated to the JK Samadhan back office.</span>
-                    ) : (
-                      <span>Welcome back, {mode === 'register' ? formData.name : 'Citizen User'}. You have been logged in successfully to the JK Samadhan Portal.</span>
-                    )}
-                  </p>
-                  <button 
-                    onClick={handleReset}
-                    className="w-full py-3 bg-gradient-to-r from-[#0c408f] to-[#13b183] hover:from-[#0a3576] hover:to-[#0f966e] text-white font-extrabold rounded-xl text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 cursor-pointer mt-4"
-                  >
-                    Done
-                  </button>
+                  {mode === 'register' && regCredentials ? (
+                    <>
+                      <h4 className="text-base font-bold text-slate-905">Registration Successful</h4>
+                      <div className="w-full bg-white border border-slate-200 rounded-xl p-6 text-center text-xs text-slate-700 shadow-inner space-y-4">
+                        <div className="w-12 h-12 rounded-full bg-blue-50 text-[#0c408f] flex items-center justify-center border border-blue-100 mx-auto">
+                          <Lock className="h-6 w-6" />
+                        </div>
+                        <p className="font-semibold text-slate-800 text-sm">
+                          Your account has been created!
+                        </p>
+                        <div className="text-[11px] text-amber-800 leading-relaxed bg-amber-50 border border-amber-250 p-3.5 rounded-xl font-bold space-y-1">
+                          <p>⚠️ SECURITY NOTIFICATION</p>
+                          <p className="font-normal text-slate-650">For development testing, your generated Login Credentials (User ID and Password) have been printed to the <strong>server terminal console</strong>.</p>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Please retrieve your credentials from the console to sign in.
+                      </p>
+                      <button 
+                        onClick={() => {
+                          setMode('login');
+                          setStep(1);
+                          setFormData(prev => ({
+                            ...prev,
+                            mobile: regCredentials.userId || '',
+                            password: ''
+                          }));
+                          setRegCredentials(null);
+                        }}
+                        className="w-full py-3 bg-gradient-to-r from-[#0c408f] to-[#13b183] hover:from-[#0a3576] hover:to-[#0f966e] text-white font-extrabold rounded-xl text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 cursor-pointer mt-4"
+                      >
+                        Proceed to Login
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <h4 className="text-base font-bold text-slate-900">Authentication Successful</h4>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        {mode === 'admin' ? (
+                          <span>Welcome back, <strong>Administrator</strong>. You have been successfully authenticated to the JK Samadhan back office.</span>
+                        ) : (
+                          <span>Welcome back, {loggedInUser ? loggedInUser.name : 'Citizen User'}. You have been logged in successfully to the JK Samadhan Portal.</span>
+                        )}
+                      </p>
+                      <button 
+                        onClick={handleDoneClick}
+                        className="w-full py-3 bg-gradient-to-r from-[#0c408f] to-[#13b183] hover:from-[#0a3576] hover:to-[#0f966e] text-white font-extrabold rounded-xl text-sm transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 cursor-pointer mt-4"
+                      >
+                        Done
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -927,17 +1142,17 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                 
                 {/* Captcha Image styling */}
                 <div className="flex items-center gap-2">
-                  <div 
-                    className="px-4 py-2 bg-pink-50 border border-pink-100 rounded-xl font-mono font-bold tracking-widest text-lg text-slate-850 relative overflow-hidden select-none"
-                    style={{
-                      backgroundImage: 'repeating-linear-gradient(45deg, #fbcfe8 0px, #fbcfe8 1px, transparent 1px, transparent 10px)',
-                      textDecoration: 'line-through',
-                      textDecorationStyle: 'double',
-                      textShadow: '1px 1px 2px rgba(0,0,0,0.15)'
-                    }}
-                  >
-                    <span className="inline-block transform -rotate-3">{captchaVal}</span>
-                  </div>
+                  {captchaImage ? (
+                    <img 
+                      src={captchaImage} 
+                      alt="Captcha" 
+                      className="h-11 w-auto rounded-xl object-contain border border-slate-200 bg-white" 
+                    />
+                  ) : (
+                    <div className="px-4 py-2 bg-pink-50 border border-pink-100 rounded-xl font-mono font-bold text-slate-400 select-none">
+                      Loading...
+                    </div>
+                  )}
                   
                   <button 
                     type="button" 
@@ -1141,7 +1356,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                         textShadow: '1px 1px 2px rgba(0,0,0,0.15)'
                       }}
                     >
-                      <span className="inline-block transform -rotate-3">{captchaVal}</span>
+                      <span className="inline-block transform -rotate-3">{forgotCaptchaVal}</span>
                     </div>
                     
                     <button 
@@ -1402,7 +1617,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }) {
                         textShadow: '1px 1px 2px rgba(0,0,0,0.15)'
                       }}
                     >
-                      <span className="inline-block transform -rotate-3">{captchaVal}</span>
+                      <span className="inline-block transform -rotate-3">{forgotCaptchaVal}</span>
                     </div>
                     
                     <button 

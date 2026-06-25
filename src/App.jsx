@@ -6,6 +6,7 @@ import StepsToLodge from './components/StepsToLodge';
 import MobileShowcase from './components/MobileShowcase';
 import FAQ from './components/FAQ';
 import Footer from './components/Footer';
+import Dashboard from './components/Dashboard';
 
 // Modals
 import GrievanceModal from './components/GrievanceModal';
@@ -16,6 +17,10 @@ import VideoModal from './components/VideoModal';
 import './App.css';
 
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [grievances, setGrievances] = useState([]);
+
   const [isGrievanceOpen, setIsGrievanceOpen] = useState(false);
   const [grievanceModalMode, setGrievanceModalMode] = useState('grievance'); // 'grievance' or 'appeal'
   const [isTrackOpen, setIsTrackOpen] = useState(false);
@@ -46,38 +51,70 @@ function App() {
     setIsVideoOpen(true);
   };
 
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    setIsLoggedIn(true);
+    setIsAuthOpen(false);
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUser(null);
+  };
+
+  const handleGrievanceSubmit = (newGrievance) => {
+    setGrievances((prev) => [newGrievance, ...prev]);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
 
       {/* Sticky Header */}
-      <Navbar
-        onLodgeClick={() => handleLodgeGrievance('grievance')}
-        onAppealClick={() => handleLodgeGrievance('appeal')}
-        onTrackClick={() => handleTrackStatus('')}
-        onAuthClick={handleOpenAuth}
-        onFaqClick={() => setIsFaqOpen(true)}
-        onLmsClick={handleOpenVideo}
-      />
+      {!isLoggedIn && (
+        <Navbar
+          onLodgeClick={() => handleLodgeGrievance('grievance')}
+          onAppealClick={() => handleLodgeGrievance('appeal')}
+          onTrackClick={() => handleTrackStatus('')}
+          onAuthClick={handleOpenAuth}
+          onFaqClick={() => setIsFaqOpen(true)}
+          onLmsClick={handleOpenVideo}
+          isLoggedIn={isLoggedIn}
+          user={user}
+          onLogout={handleLogout}
+        />
+      )}
 
       {/* Main Content Area */}
-      <main className="flex-1">
+      <main className="flex-1 flex flex-col">
+        {isLoggedIn ? (
+          <Dashboard
+            user={user}
+            grievances={grievances}
+            setGrievances={setGrievances}
+            onLodgeClick={() => handleLodgeGrievance('grievance')}
+            onAppealClick={() => handleLodgeGrievance('appeal')}
+            onLogout={handleLogout}
+            onLmsClick={handleOpenVideo}
+          />
+        ) : (
+          <>
+            {/* Hero Section – fullscreen, Navbar overlays on top */}
+            <Hero />
 
-        {/* Hero Section – fullscreen, Navbar overlays on top */}
-        <Hero />
+            {/* Mobile App Section – Phone mockup with video background */}
+            <MobileShowcase />
 
-        {/* Mobile App Section – Phone mockup with video background */}
-        <MobileShowcase />
+            {/* About Us Section */}
+            <AboutUs />
 
-        {/* About Us Section */}
-        <AboutUs />
-
-        {/* Steps To Lodge Section – Onboarding wavy sine timeline */}
-        <StepsToLodge />
-
+            {/* Steps To Lodge Section – Onboarding wavy sine timeline */}
+            <StepsToLodge />
+          </>
+        )}
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer – only shown on landing page */}
+      {!isLoggedIn && <Footer />}
 
       {/* Interactive Modals */}
       <GrievanceModal
@@ -92,6 +129,9 @@ function App() {
           setIsGrievanceOpen(false);
           handleOpenAuth('register');
         }}
+        isLoggedIn={isLoggedIn}
+        user={user}
+        onGrievanceSubmit={handleGrievanceSubmit}
       />
 
       <TrackModal
@@ -107,6 +147,7 @@ function App() {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         initialMode={authMode}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       <FAQ
