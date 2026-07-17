@@ -10,12 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.2.0",
     "@tailwindcss/vite": "^4.3.0",
+    "axios": "^1.18.1",
     "framer-motion": "^12.40.0",
-    "lucide-react": "^1.17.0",
+    "lucide-react": "^1.24.0",
     "ogl": "^1.0.11",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-hook-form": "^7.81.0",
+    "react-router-dom": "^7.18.1",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {

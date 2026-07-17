@@ -1,35 +1,31 @@
-import React, { useState } from 'react';
-import Navbar from './components/Navbar';
-import Hero from './components/Hero';
-import AboutUs from './components/AboutUs';
-import StepsToLodge from './components/StepsToLodge';
-import MobileShowcase from './components/MobileShowcase';
-import FAQ from './components/FAQ';
-import Footer from './components/Footer';
-import Dashboard from './components/Dashboard';
-
-// Modals
-import GrievanceModal from './components/GrievanceModal';
-import TrackModal from './components/TrackModal';
-import AuthModal from './components/AuthModal';
-import VideoModal from './components/VideoModal';
+import React from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import AppRoutes from './routes/AppRoutes';
+import Navbar from './components/layout/Navbar';
+import FAQ from './components/modals/FAQ';
+import VideoModal from './components/modals/VideoModal';
+import AuthModal from './components/modals/AuthModal';
+import GrievanceModal from './components/modals/GrievanceModal';
+import TrackModal from './components/modals/TrackModal';
 
 import './App.css';
 
-function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
-  const [grievances, setGrievances] = useState([]);
-
-  const [isGrievanceOpen, setIsGrievanceOpen] = useState(false);
-  const [grievanceModalMode, setGrievanceModalMode] = useState('grievance'); // 'grievance' or 'appeal'
-  const [isTrackOpen, setIsTrackOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [isFaqOpen, setIsFaqOpen] = useState(false);
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
-  const [trackRefCode, setTrackRefCode] = useState('');
-  const [isVideoOpen, setIsVideoOpen] = useState(false);
-  const [videoType, setVideoType] = useState('login'); // 'login' or 'register'
+// Inner component that has access to auth context
+function AppContent() {
+  const { isLoggedIn, user, logout, isLoading } = useAuth();
+  
+  // Modals state (retained from original App.jsx)
+  const [isGrievanceOpen, setIsGrievanceOpen] = React.useState(false);
+  const [grievanceModalMode, setGrievanceModalMode] = React.useState('grievance');
+  const [isTrackOpen, setIsTrackOpen] = React.useState(false);
+  const [isAuthOpen, setIsAuthOpen] = React.useState(false);
+  const [isFaqOpen, setIsFaqOpen] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState('login');
+  const [trackRefCode, setTrackRefCode] = React.useState('');
+  const [isVideoOpen, setIsVideoOpen] = React.useState(false);
+  const [videoType, setVideoType] = React.useState('login');
+  const [grievances, setGrievances] = React.useState([]);
 
   const handleLodgeGrievance = (mode = 'grievance') => {
     setGrievanceModalMode(mode);
@@ -52,24 +48,28 @@ function App() {
   };
 
   const handleLoginSuccess = (userData) => {
-    setUser(userData);
-    setIsLoggedIn(true);
     setIsAuthOpen(false);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUser(null);
   };
 
   const handleGrievanceSubmit = (newGrievance) => {
     setGrievances((prev) => [newGrievance, ...prev]);
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 font-sans">
+        <div className="flex flex-col items-center gap-4 select-none">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-sm font-bold text-slate-650 dark:text-slate-400 animate-pulse">Initializing Portal Session...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300">
-
-      {/* Sticky Header */}
+      
+      {/* Sticky Header shown when not logged in */}
       {!isLoggedIn && (
         <Navbar
           onLodgeClick={() => handleLodgeGrievance('grievance')}
@@ -80,41 +80,20 @@ function App() {
           onLmsClick={handleOpenVideo}
           isLoggedIn={isLoggedIn}
           user={user}
-          onLogout={handleLogout}
+          onLogout={logout}
         />
       )}
 
-      {/* Main Content Area */}
+      {/* Main Content Area using dynamic AppRoutes */}
       <main className="flex-1 flex flex-col">
-        {isLoggedIn ? (
-          <Dashboard
-            user={user}
-            grievances={grievances}
-            setGrievances={setGrievances}
-            onLodgeClick={() => handleLodgeGrievance('grievance')}
-            onAppealClick={() => handleLodgeGrievance('appeal')}
-            onLogout={handleLogout}
-            onLmsClick={handleOpenVideo}
-          />
-        ) : (
-          <>
-            {/* Hero Section – fullscreen, Navbar overlays on top */}
-            <Hero />
-
-            {/* Mobile App Section – Phone mockup with video background */}
-            <MobileShowcase />
-
-            {/* About Us Section */}
-            <AboutUs />
-
-            {/* Steps To Lodge Section – Onboarding wavy sine timeline */}
-            <StepsToLodge />
-          </>
-        )}
+        <AppRoutes
+          onLodgeClick={() => handleLodgeGrievance('grievance')}
+          onAppealClick={() => handleLodgeGrievance('appeal')}
+          onLmsClick={handleOpenVideo}
+          grievances={grievances}
+          setGrievances={setGrievances}
+        />
       </main>
-
-      {/* Footer – only shown on landing page */}
-      {!isLoggedIn && <Footer />}
 
       {/* Interactive Modals */}
       <GrievanceModal
@@ -161,6 +140,16 @@ function App() {
         videoType={videoType}
       />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </Router>
   );
 }
 
