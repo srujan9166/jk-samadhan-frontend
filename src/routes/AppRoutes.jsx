@@ -10,15 +10,17 @@ import GrievanceDetail from '../pages/Details/GrievanceDetail';
 import AppealDetail from '../pages/Details/AppealDetail';
 import DealingHandForm from '../pages/Forms/DealingHandForm';
 import ProcessGrievance from '../pages/Forms/ProcessGrievance';
+import SuperAdminGrievanceDetail from '../pages/Details/SuperAdminGrievanceDetail';
 
 export default function AppRoutes({
   onLodgeClick,
   onAppealClick,
   onLmsClick,
   grievances,
-  setGrievances
+  setGrievances,
+  onLogout
 }) {
-  const { isLoggedIn, logout, user } = useAuth();
+  const { isLoggedIn, user } = useAuth();
 
   return (
     <Routes>
@@ -41,7 +43,7 @@ export default function AppRoutes({
               setGrievances={setGrievances}
               onLodgeClick={onLodgeClick}
               onAppealClick={onAppealClick}
-              onLogout={logout}
+              onLogout={onLogout}
               onLmsClick={onLmsClick}
             />
           } 
@@ -49,6 +51,11 @@ export default function AppRoutes({
         <Route path="/grievance/:id" element={<GrievanceDetail />} />
         <Route path="/appeal/:id" element={<AppealDetail />} />
         <Route path="/process-grievance/:id" element={<ProcessGrievance />} />
+      </Route>
+
+      {/* Super Admin specific routes */}
+      <Route element={<ProtectedRoute allowedRoles={['ROLE_SuperAdmin']} />}>
+        <Route path="/superadmin/grievance-details/:id" element={<SuperAdminGrievanceDetail />} />
       </Route>
 
       {/* Role-Specific Protected Route: Dealing Hand Form */}

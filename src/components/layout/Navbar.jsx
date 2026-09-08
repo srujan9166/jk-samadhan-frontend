@@ -130,7 +130,7 @@ export default function Navbar({ onLodgeClick, onAppealClick, onTrackClick, onAu
                 JK Samadhan
               </span>
               <span className="bg-[#f06e30] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full tracking-widest leading-none">
-                2.0
+                3.0
               </span>
             </div>
             <span className="text-[14px] font-medium text-slate-500 mt-1.5 leading-normal">

@@ -6,11 +6,15 @@ const authService = {
     return response.data;
   },
 
-  login: async (mobile, password, otpCode = '') => {
+  login: async (identifier, password, otpCode = '') => {
+    const cleanIdentifier = identifier ? identifier.trim() : '';
+    const isEmail = cleanIdentifier.includes('@');
     const response = await axiosClient.post('/auth/login', {
-      mobile,
-      password,
-      otpCode,
+      mobile: !isEmail ? cleanIdentifier : '',
+      email: isEmail ? cleanIdentifier : '',
+      username: cleanIdentifier,
+      password: password ? password : '',
+      otpCode: otpCode ? otpCode.trim() : '',
     });
     return response.data;
   },

@@ -11,15 +11,34 @@ export const AuthProvider = ({ children }) => {
 
   const checkSession = async () => {
     const token = localStorage.getItem('token');
+    const storedUserStr = localStorage.getItem('user');
+
     if (token) {
+      let initialUser = null;
+      if (storedUserStr) {
+        try {
+          initialUser = JSON.parse(storedUserStr);
+          setUser(initialUser);
+          setIsLoggedIn(true);
+        } catch (e) {
+          console.error('Error parsing stored user:', e);
+        }
+      }
+
       try {
         const response = await axiosClient.get('/api/users/me');
         setUser(response.data);
         setIsLoggedIn(true);
+        localStorage.setItem('user', JSON.stringify(response.data));
       } catch (error) {
-        console.error('Session verification failed:', error);
-        logout();
+        console.error('Session verification error:', error);
+        // Only force logout if 401 Unauthorized or no stored user was present
+        if (error.response?.status === 401 || !initialUser) {
+          logout();
+        }
       }
+    } else {
+      logout();
     }
     setIsLoading(false);
   };
@@ -39,8 +58,8 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const login = async (mobile, password, otpCode = '') => {
-    const data = await authService.login(mobile, password, otpCode);
+  const login = async (identifier, password, otpCode = '') => {
+    const data = await authService.login(identifier, password, otpCode);
     if (data.status === 'SUCCESS' && data.token) {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -58,6 +77,10 @@ export const AuthProvider = ({ children }) => {
           district: data.user.district,
           address: data.user.address,
           role: data.user.role,
+          gender: data.user.gender,
+          dateOfBirth: data.user.dateOfBirth,
+          pincode: data.user.pincode,
+          state: data.user.state,
         });
         setIsLoggedIn(true);
       }

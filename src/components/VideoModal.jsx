@@ -59,7 +59,7 @@ export default function VideoModal({ isOpen, onClose, videoType }) {
 
         {/* Footer Bar */}
         <div className="bg-slate-950 px-6 py-3 text-center text-xs text-slate-500 border-t border-slate-800/80">
-          JK Samadhan 2.0 Unified Portal Video Guide
+          JK Samadhan 3.0 Unified Portal Video Guide
         </div>
       </div>
     </div>

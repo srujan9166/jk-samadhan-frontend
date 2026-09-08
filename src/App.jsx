@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { BrowserRouter as Router, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AppRoutes from './routes/AppRoutes';
 import Navbar from './components/layout/Navbar';
@@ -13,7 +13,11 @@ import './App.css';
 
 // Inner component that has access to auth context
 function AppContent() {
+
+  
   const { isLoggedIn, user, logout, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // Modals state (retained from original App.jsx)
   const [isGrievanceOpen, setIsGrievanceOpen] = React.useState(false);
@@ -49,7 +53,46 @@ function AppContent() {
 
   const handleLoginSuccess = (userData) => {
     setIsAuthOpen(false);
+    navigate('/dashboard', { replace: true });
   };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/', { replace: true });
+  };
+
+  React.useEffect(() => {
+    const handlePageShow = (event) => {
+      // Re-verify session when page is loaded from back-forward cache (persisted)
+      // or if session token is cleared after logout.
+      const token = localStorage.getItem('token');
+      if (!token && isLoggedIn) {
+        handleLogout();
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [isLoggedIn]);
+
+  React.useEffect(() => {
+    if (!isLoggedIn) return;
+
+    // Push an initial dummy entry to history to enable pop interception
+    window.history.pushState(null, null, window.location.href);
+
+    const handlePopState = (event) => {
+      if (isLoggedIn && window.location.pathname === '/dashboard') {
+        // Intercept back-navigation on the root dashboard page and lock the user in
+        window.history.pushState(null, null, window.location.href);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isLoggedIn, location.pathname]);
 
   const handleGrievanceSubmit = (newGrievance) => {
     setGrievances((prev) => [newGrievance, ...prev]);
@@ -80,7 +123,7 @@ function AppContent() {
           onLmsClick={handleOpenVideo}
           isLoggedIn={isLoggedIn}
           user={user}
-          onLogout={logout}
+          onLogout={handleLogout}
         />
       )}
 
@@ -92,6 +135,7 @@ function AppContent() {
           onLmsClick={handleOpenVideo}
           grievances={grievances}
           setGrievances={setGrievances}
+          onLogout={handleLogout}
         />
       </main>
 
@@ -154,3 +198,6 @@ function App() {
 }
 
 export default App;
+
+
+

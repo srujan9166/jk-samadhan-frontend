@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { API_BASE_URL } from '../../config';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  FileCheck2, 
-  PieChart, 
-  Calendar, 
-  ThumbsUp, 
-  AlertCircle, 
-  FileX, 
-  Search, 
+import {
+  LayoutDashboard,
+  FileText,
+  FileCheck2,
+  PieChart,
+  Calendar,
+  ThumbsUp,
+  AlertCircle,
+  FileX,
+  Search,
   ChevronLeft,
   ChevronRight,
   Database,
@@ -25,13 +25,14 @@ import {
   MapPin
 } from 'lucide-react';
 import emblemImg from '../../assets/emblem.png';
+import logoImg from '../../assets/logo.png';
 import GISMapModal from '../../components/modals/GISMapModal';
 
-export default function CitizenDashboard({ 
-  user, 
-  grievances, 
-  setGrievances, 
-  onLodgeClick, 
+export default function CitizenDashboard({
+  user,
+  grievances,
+  setGrievances,
+  onLodgeClick,
   onAppealClick,
   onLogout,
   onLmsClick
@@ -41,6 +42,10 @@ export default function CitizenDashboard({
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    document.title = "JK Samadhan 3.0 - Citizen Dashboard";
+  }, []);
 
   // Header Dropdowns
   const [isLmsDropdownOpen, setIsLmsDropdownOpen] = useState(false);
@@ -60,8 +65,20 @@ export default function CitizenDashboard({
   const [windowType, setWindowType] = useState('Samadhan');
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [dbSubCategories, setDbSubCategories] = useState([]);
+  const [selectedSubCategory, setSelectedSubCategory] = useState('');
   const [pertainDivision, setPertainDivision] = useState('');
   const [pertainDistrict, setPertainDistrict] = useState('');
+  const [dbBlocks, setDbBlocks] = useState([]);
+  const [dbPanchayats, setDbPanchayats] = useState([]);
+  const [dbMunicipalities, setDbMunicipalities] = useState([]);
+  const [dbWards, setDbWards] = useState([]);
+  const [selectedBlockId, setSelectedBlockId] = useState('');
+  const [selectedMunicipalityId, setSelectedMunicipalityId] = useState('');
+  const [selectedBlock, setSelectedBlock] = useState('');
+  const [selectedPanchayat, setSelectedPanchayat] = useState('');
+  const [selectedMunicipality, setSelectedMunicipality] = useState('');
+  const [selectedWard, setSelectedWard] = useState('');
   const [municipalityOrBlock, setMunicipalityOrBlock] = useState('');
   const [description, setDescription] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -70,7 +87,14 @@ export default function CitizenDashboard({
   const [psgAct, setPsgAct] = useState(false); // PSGA toggle
   const [grievanceLocation, setGrievanceLocation] = useState('');
   const [isGISMapOpen, setIsGISMapOpen] = useState(false);
-  
+
+  // Lodge Appeal States
+  const [selectedGrievanceId, setSelectedGrievanceId] = useState('');
+  const [selectedGrievance, setSelectedGrievance] = useState(null);
+  const [appealDescription, setAppealDescription] = useState('');
+  const [appealFile, setAppealFile] = useState(null);
+  const [submittedGrievanceDetails, setSubmittedGrievanceDetails] = useState(null);
+
   const handleLocationSelected = (loc) => {
     setGrievanceLocation(`${loc.latitude}, ${loc.longitude}`);
     if (loc.district) {
@@ -78,31 +102,184 @@ export default function CitizenDashboard({
     }
   };
 
-  // Department definitions
-  const departments = [
-    { id: 'ari', name: 'ARI & TRAININGS DEPARTMENT' },
-    { id: 'pwd', name: 'Public Works Department (R&B)' },
-    { id: 'pdd', name: 'Power Development Department (PDD)' },
-    { id: 'phe', name: 'Jal Shakti (PHE) Department' },
-    { id: 'health', name: 'Health & Medical Education' },
-    { id: 'edu', name: 'School Education Department' },
-    { id: 'revenue', name: 'Revenue Department' },
-    { id: 'municipality', name: 'Housing & Urban Development' },
-    { id: 'food', name: 'Food, Civil Supplies & Consumer Affairs' }
-  ];
+  // Department, Category, Division, District states from DB
+  const [dbDepartments, setDbDepartments] = useState([]);
+  const [dbCategories, setDbCategories] = useState([]);
+  const [dbDivisions, setDbDivisions] = useState([]);
+  const [dbDistricts, setDbDistricts] = useState([]);
+  const [selectedDivisionId, setSelectedDivisionId] = useState('');
 
-  // Category definitions
-  const categories = {
-    ari: ['Training Process', 'Rule Interpretation', 'Service Rules', 'Other ARI Issues'],
-    pwd: ['Road Repair', 'Bridge Construction', 'Building Maintenance', 'Other PWD Issues'],
-    pdd: ['Power Outage', 'Faulty Transformer', 'Billing Grievance', 'New Connection Delay'],
-    phe: ['Water Scarcity', 'Contaminated Water', 'Pipeline Leakage', 'Billing Issue'],
-    health: ['Hospital Facilities', 'Staff Behaviour', 'Medicine Availability', 'Scheme Enrollment'],
-    edu: ['School Infrastructure', 'Teacher Availability', 'Mid-Day Meal Quality', 'Scholarships'],
-    revenue: ['Land Records', 'Demarcation Delay', 'Certificate Issuance', 'Staff Misconduct'],
-    municipality: ['Garbage Collection', 'Street Light Malfunction', 'Drainage Blockage', 'Stray Animal Menace'],
-    food: ['Ration Card Issue', 'Ration Quality', 'Dealer Misbehaviour', 'Black Marketing']
-  };
+  // Fetch departments and divisions on mount
+  useEffect(() => {
+    const fetchMasters = async () => {
+      try {
+        const deptRes = await fetch(`${API_BASE_URL}/api/masters/departments`);
+        if (deptRes.ok) {
+          const depts = await deptRes.json();
+          setDbDepartments(depts);
+        }
+        const divRes = await fetch(`${API_BASE_URL}/api/geo/divisions`);
+        if (divRes.ok) {
+          const divs = await divRes.json();
+          setDbDivisions(divs);
+        }
+      } catch (error) {
+        console.error('Error fetching departments or divisions:', error);
+      }
+    };
+    fetchMasters();
+  }, []);
+
+  // Fetch categories when selectedDept changes
+  useEffect(() => {
+    const fetchCategories = async () => {
+      if (!selectedDept) {
+        setDbCategories([]);
+        return;
+      }
+      try {
+        const catRes = await fetch(`${API_BASE_URL}/api/masters/categories?deptId=${selectedDept}`);
+        if (catRes.ok) {
+          const cats = await catRes.json();
+          setDbCategories(cats);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, [selectedDept]);
+
+  // Fetch subcategories when selectedCategory changes
+  useEffect(() => {
+    const fetchSubCategories = async () => {
+      if (!selectedCategory) {
+        setDbSubCategories([]);
+        setSelectedSubCategory('');
+        return;
+      }
+      const selectedCatObj = dbCategories.find(c => c.name === selectedCategory);
+      const categoryId = selectedCatObj ? selectedCatObj.id : null;
+      if (!categoryId) {
+        setDbSubCategories([]);
+        setSelectedSubCategory('');
+        return;
+      }
+      try {
+        const subRes = await fetch(`${API_BASE_URL}/api/masters/subcategories?categoryId=${categoryId}`);
+        if (subRes.ok) {
+          const subs = await subRes.json();
+          setDbSubCategories(subs);
+        }
+      } catch (error) {
+        console.error('Error fetching subcategories:', error);
+      }
+    };
+    fetchSubCategories();
+  }, [selectedCategory, dbCategories]);
+
+  // Fetch districts when selectedDivisionId changes
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      if (!selectedDivisionId) {
+        setDbDistricts([]);
+        return;
+      }
+      try {
+        const distRes = await fetch(`${API_BASE_URL}/api/geo/divisions/${selectedDivisionId}/districts`);
+        if (distRes.ok) {
+          const dists = await distRes.json();
+          setDbDistricts(dists);
+        }
+      } catch (error) {
+        console.error('Error fetching districts:', error);
+      }
+    };
+    fetchDistricts();
+  }, [selectedDivisionId]);
+
+  // Fetch blocks and municipalities when pertainDistrict changes
+  useEffect(() => {
+    const fetchBlocksAndMunicipalities = async () => {
+      if (!pertainDistrict) {
+        setDbBlocks([]);
+        setDbMunicipalities([]);
+        setSelectedBlockId('');
+        setSelectedMunicipalityId('');
+        setSelectedBlock('');
+        setSelectedMunicipality('');
+        return;
+      }
+      const selectedDistObj = dbDistricts.find(d => d.name === pertainDistrict);
+      const districtId = selectedDistObj ? selectedDistObj.id : null;
+      if (!districtId) {
+        setDbBlocks([]);
+        setDbMunicipalities([]);
+        setSelectedBlockId('');
+        setSelectedMunicipalityId('');
+        setSelectedBlock('');
+        setSelectedMunicipality('');
+        return;
+      }
+      try {
+        const blockRes = await fetch(`${API_BASE_URL}/api/geo/districts/${districtId}/blocks`);
+        if (blockRes.ok) {
+          const blocks = await blockRes.json();
+          setDbBlocks(blocks);
+        }
+        const muniRes = await fetch(`${API_BASE_URL}/api/geo/districts/${districtId}/municipalities`);
+        if (muniRes.ok) {
+          const munis = await muniRes.json();
+          setDbMunicipalities(munis);
+        }
+      } catch (error) {
+        console.error('Error fetching blocks or municipalities:', error);
+      }
+    };
+    fetchBlocksAndMunicipalities();
+  }, [pertainDistrict, dbDistricts]);
+
+  // Fetch panchayats when selectedBlockId changes
+  useEffect(() => {
+    const fetchPanchayats = async () => {
+      if (!selectedBlockId) {
+        setDbPanchayats([]);
+        setSelectedPanchayat('');
+        return;
+      }
+      try {
+        const panRes = await fetch(`${API_BASE_URL}/api/geo/blocks/${selectedBlockId}/panchayats`);
+        if (panRes.ok) {
+          const pans = await panRes.json();
+          setDbPanchayats(pans);
+        }
+      } catch (error) {
+        console.error('Error fetching panchayats:', error);
+      }
+    };
+    fetchPanchayats();
+  }, [selectedBlockId]);
+
+  // Fetch wards when selectedMunicipalityId changes
+  useEffect(() => {
+    const fetchWards = async () => {
+      if (!selectedMunicipalityId) {
+        setDbWards([]);
+        setSelectedWard('');
+        return;
+      }
+      try {
+        const wardRes = await fetch(`${API_BASE_URL}/api/geo/municipalities/${selectedMunicipalityId}/wards`);
+        if (wardRes.ok) {
+          const wrds = await wardRes.json();
+          setDbWards(wrds);
+        }
+      } catch (error) {
+        console.error('Error fetching wards:', error);
+      }
+    };
+    fetchWards();
+  }, [selectedMunicipalityId]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -138,15 +315,20 @@ export default function CitizenDashboard({
         if (res.ok) {
           const data = await res.json();
           const mapped = data.map((g) => ({
-            refNum: `JK-${100000 + g.id}-${new Date().getFullYear()}`,
+            id: g.id,
+            uniqId: g.uniqId || `JK-${100000 + g.id}-${new Date().getFullYear()}`,
+            refNum: g.uniqId || `JK-${100000 + g.id}-${new Date().getFullYear()}`,
             type: g.windowType === 'Raabita' ? 'appeal' : 'grievance',
             department: g.department,
             category: g.grievanceCategory,
             subject: g.description ? g.description.substring(0, 45) + '...' : 'Grievance',
             description: g.description,
-            date: new Date().toLocaleDateString('en-GB'),
-            status: 'Pending',
-            source: g.windowType || 'Web'
+            date: g.createdAt ? new Date(g.createdAt).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'),
+            status: g.status || 'Pending',
+            source: g.windowType || 'Web',
+            citizenName: g.citizenName,
+            citizenPhone: g.citizenPhone,
+            submittedBy: g.submittedBy
           }));
           setGrievances(mapped);
         } else if (res.status === 403) {
@@ -214,6 +396,91 @@ export default function CitizenDashboard({
     }
   };
 
+  // Lodge Appeal Handlers
+  const handleGrievanceSelect = (gId) => {
+    setSelectedGrievanceId(gId);
+    if (!gId) {
+      setSelectedGrievance(null);
+      return;
+    }
+    const found = grievances.find(g => (g.id && g.id.toString() === gId.toString()) || g.refNum === gId || g.uniqId === gId);
+    setSelectedGrievance(found || null);
+  };
+
+  const handleDescriptionChange = (val) => {
+    if (val.length <= 3000) {
+      setAppealDescription(val);
+    }
+  };
+
+  const handleAppealFileChange = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setAppealFile(e.target.files[0]);
+    } else {
+      setAppealFile(null);
+    }
+  };
+
+  const handleAppealSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedGrievanceId) {
+      alert("Please select a Grievance ID.");
+      return;
+    }
+    if (!appealDescription.trim()) {
+      alert("Please enter the details of the appeal.");
+      return;
+    }
+
+    const payload = {
+      grievanceId: parseInt(selectedGrievanceId),
+      description: appealDescription,
+      fileName: appealFile ? appealFile.name : null,
+      filePath: appealFile ? 'uploads/' + appealFile.name : null
+    };
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/appeals/appealSubmit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        alert("Appeal submitted successfully!");
+
+        // Update status of the appealed grievance in the parent list
+        if (setGrievances) {
+          setGrievances(prev => prev.map(g => {
+            if (g.id.toString() === selectedGrievanceId.toString()) {
+              return { ...g, status: 'Appealed' };
+            }
+            return g;
+          }));
+        }
+
+        // Reset states
+        setSelectedGrievanceId('');
+        setSelectedGrievance(null);
+        setAppealDescription('');
+        setAppealFile(null);
+
+        // Redirect back to dashboard
+        setActiveView('dashboard');
+      } else {
+        const errorData = await res.json();
+        alert("Failed to submit appeal: " + (errorData.error || res.statusText));
+      }
+    } catch (err) {
+      console.error("Error submitting appeal:", err);
+      alert("Failed to submit appeal. Please try again.");
+    }
+  };
+
   // Submit Grievance to Backend
   const handleFormSubmit = async (e) => {
     e.preventDefault();
@@ -242,6 +509,14 @@ export default function CitizenDashboard({
       alert("Please select whether under Municipality or Block.");
       return;
     }
+    if (municipalityOrBlock === 'Block' && !selectedBlock) {
+      alert("Please select block.");
+      return;
+    }
+    if (municipalityOrBlock === 'Municipality' && !selectedMunicipality) {
+      alert("Please select municipality.");
+      return;
+    }
     if (!description.trim()) {
       alert("Please enter description.");
       return;
@@ -253,19 +528,25 @@ export default function CitizenDashboard({
 
     const payload = {
       name: user ? (user.name || `${user.firstName || ''} ${user.middleName || ''} ${user.lastName || ''}`.trim()) : 'sai srujan rallabandi',
-      mobile: user?.mobile || '9339399397',
+      mobile: user?.phone || user?.mobile || '9339399397',
       email: user?.email || 'NA',
       gender: user?.gender || 'MALE',
       dateOfBirth: user?.dateOfBirth || '2003-10-02',
-      address: user?.address || 'khammam',
-      pincode: user?.pincode || '507001',
-      state: user?.state || 'TELANGANA',
-      district: user?.district || 'KHAMMAM',
+      address: user?.address || 'NA',
+      pincode: user?.pincode || 'NA',
+      state: user?.state || 'Other',
+      district: user?.district || 'Other',
       windowType: windowType,
       department: selectedDept,
       grievanceCategory: selectedCategory,
+      subCategory: selectedSubCategory,
       pertainDivision: pertainDivision,
       pertainDistrict: pertainDistrict,
+      municipalityOrBlock: municipalityOrBlock,
+      blockName: municipalityOrBlock === 'Block' ? selectedBlock : '',
+      panchayatName: municipalityOrBlock === 'Block' ? selectedPanchayat : '',
+      municipalityName: municipalityOrBlock === 'Municipality' ? selectedMunicipality : '',
+      wardName: municipalityOrBlock === 'Municipality' ? selectedWard : '',
       description: description,
       fileName: docFile ? docFile.name : null,
       filePath: docFile ? 'uploads/' + docFile.name : null,
@@ -288,33 +569,62 @@ export default function CitizenDashboard({
         const savedGrievance = await res.json();
         alert("Grievance submitted successfully!");
 
+        const deptObj = dbDepartments.find(d => String(d.id) === String(selectedDept));
+        const deptName = deptObj ? deptObj.name : 'PUBLIC GRIEVANCES DEPARTMENT';
+
         const newGrievance = {
-          refNum: `JK-${100000 + savedGrievance.id}-${new Date().getFullYear()}`,
+          id: savedGrievance.id,
+          uniqId: savedGrievance.uniqId || `JK-${100000 + savedGrievance.id}-${new Date().getFullYear()}`,
+          refNum: savedGrievance.uniqId || `JK-${100000 + savedGrievance.id}-${new Date().getFullYear()}`,
           type: windowType === 'Raabita' ? 'appeal' : 'grievance',
-          department: selectedDept,
+          department: deptName,
           category: selectedCategory,
           subject: description.substring(0, 45) + '...',
           description: description,
-          date: new Date().toLocaleDateString('en-GB'),
-          status: 'Pending',
-          source: windowType
+          date: savedGrievance.createdAt ? new Date(savedGrievance.createdAt).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'),
+          status: savedGrievance.status || 'Pending',
+          source: windowType,
+          citizenName: payload.name,
+          citizenPhone: payload.mobile,
+          submittedBy: {
+            id: user?.id,
+            name: payload.name,
+            mobile: payload.mobile,
+            email: payload.email,
+            gender: payload.gender
+          }
         };
 
         setGrievances((prev) => [newGrievance, ...prev]);
-        setActiveView('dashboard');
+
+        setSubmittedGrievanceDetails({
+          uniqId: newGrievance.refNum,
+          date: newGrievance.date,
+          name: payload.name,
+          department: deptName
+        });
 
         // Reset
         setWindowType('Samadhan');
         setSelectedDept('');
         setSelectedCategory('');
+        setSelectedSubCategory('');
         setPertainDivision('');
         setPertainDistrict('');
         setMunicipalityOrBlock('');
+        setSelectedBlock('');
+        setSelectedPanchayat('');
+        setSelectedMunicipality('');
+        setSelectedWard('');
+        setSelectedBlockId('');
+        setSelectedMunicipalityId('');
         setDescription('');
         setDocFile(null);
         setMediaFile(null);
         setPsgAct(null);
         setGrievanceLocation('');
+
+        setActiveView('acknowledgment');
       } else {
         const errMsg = await res.text();
         alert("Failed to submit grievance: " + errMsg);
@@ -328,7 +638,7 @@ export default function CitizenDashboard({
   // Department ID to Name map for display
   const getDeptName = (id) => {
     const depts = {};
-    departments.forEach(d => {
+    dbDepartments.forEach(d => {
       depts[d.id] = d.name;
     });
     return depts[id] || id || 'General Administration';
@@ -352,48 +662,64 @@ export default function CitizenDashboard({
   const handleLoadDemoData = () => {
     const demoGrievances = [
       {
+        id: 1,
+        uniqId: 'JK-283941-2026',
         refNum: 'JK-283941-2026',
         type: 'grievance',
-        department: 'pdd',
+        department: 'Power Development Department (PDD)',
         category: 'Faulty Transformer',
         subject: 'Repeated power fluctuations and faulty transformer in Sector 3',
         description: 'The local transformer has caught fire twice and voltage fluctuation is damaging household electronics.',
         date: '18/06/2026',
         status: 'Pending',
-        source: 'Web'
+        source: 'Web',
+        citizenName: user?.name || 'SAI SRUJAN RALLABANDI',
+        citizenPhone: user?.phone || '9339399397'
       },
       {
+        id: 2,
+        uniqId: 'JK-198274-2026',
         refNum: 'JK-198274-2026',
         type: 'grievance',
-        department: 'municipality',
+        department: 'Housing & Urban Development Department',
         category: 'Garbage Collection',
         subject: 'Irregular waste disposal and blocked sewers in Ward 9',
         description: 'Waste disposal trucks have not visited Ward 9 in two weeks. Drainage is blocked causing health hazards.',
         date: '12/06/2026',
         status: 'Resolved',
-        source: 'Mobile'
+        source: 'Mobile',
+        citizenName: user?.name || 'SAI SRUJAN RALLABANDI',
+        citizenPhone: user?.phone || '9339399397'
       },
       {
+        id: 3,
+        uniqId: 'JK-304928-2026',
         refNum: 'JK-304928-2026',
         type: 'grievance',
-        department: 'phe',
+        department: 'Jal Shakti (PHE) Department',
         category: 'Water Scarcity',
         subject: 'No drinking water supply for 5 consecutive days',
         description: 'Water pipeline in Anantnag block has ruptured, leading to no clean drinking water availability.',
         date: '05/06/2026',
         status: 'Rejected',
-        source: 'Web'
+        source: 'Web',
+        citizenName: user?.name || 'SAI SRUJAN RALLABANDI',
+        citizenPhone: user?.phone || '9339399397'
       },
       {
+        id: 4,
+        uniqId: 'JK-APL-492019-2026',
         refNum: 'JK-APL-492019-2026',
         type: 'appeal',
-        department: 'edu',
+        department: 'School Education Department',
         category: 'School Infrastructure',
         subject: 'Appeal regarding delayed mid-day meal quality inspection',
         description: 'First grievance was marked resolved but the food quality is still subpar. Seeking secondary investigation.',
         date: '22/06/2026',
         status: 'Appealed',
-        source: 'Web'
+        source: 'Web',
+        citizenName: user?.name || 'SAI SRUJAN RALLABANDI',
+        citizenPhone: user?.phone || '9339399397'
       }
     ];
     setGrievances(demoGrievances);
@@ -440,23 +766,23 @@ export default function CitizenDashboard({
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f4f7f9] text-slate-800 font-sans">
-      
+
       {/* ── Top Header Redesigned ── */}
       <header className="h-16 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-4 z-45 sticky top-0 shrink-0">
         {/* Left: Brand logos and hamburger toggle */}
         <div className="flex items-center gap-3">
           <img src={emblemImg} className="h-9 w-auto object-contain shrink-0" alt="Emblem" />
-          
+
           <div className="flex flex-col text-left">
             <div className="flex items-center gap-1">
               <span className="text-sm font-black text-[#164581] leading-none">JK Samadhan</span>
-              <span className="bg-[#f06e30] text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full scale-90">2.0</span>
+              <span className="bg-[#f06e30] text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full scale-90">3.0</span>
             </div>
             <span className="text-[7.5px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 leading-none">Government of Jammu & Kashmir</span>
           </div>
 
           <div className="h-6 w-px bg-slate-200 mx-1.5 hidden sm:block"></div>
-          
+
           <div className="flex items-center gap-1.5 z-10 hidden sm:flex">
             <div className="p-0.5 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-lg text-white">
               <svg viewBox="0 0 100 100" className="w-5 h-5 text-white fill-none stroke-current" strokeWidth="6">
@@ -478,7 +804,7 @@ export default function CitizenDashboard({
             </div>
           </div>
 
-          <button 
+          <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer ml-1.5 sm:ml-3 border-0 bg-transparent"
             aria-label="Toggle Sidebar"
@@ -491,7 +817,7 @@ export default function CitizenDashboard({
         <div className="flex items-center gap-2">
           {/* LMS Videos */}
           <div className="relative" ref={lmsRef}>
-            <button 
+            <button
               onClick={() => {
                 setIsLmsDropdownOpen(!isLmsDropdownOpen);
                 setIsManualDropdownOpen(false);
@@ -508,13 +834,13 @@ export default function CitizenDashboard({
             </button>
             {isLmsDropdownOpen && (
               <div className="absolute right-0 mt-1.5 w-44 bg-white border border-slate-200 rounded-md shadow-lg py-1 z-50 text-left">
-                <button 
+                <button
                   onClick={() => { setIsLmsDropdownOpen(false); onLmsClick('login'); }}
                   className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0"
                 >
                   How to Login
                 </button>
-                <button 
+                <button
                   onClick={() => { setIsLmsDropdownOpen(false); onLmsClick('register'); }}
                   className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0"
                 >
@@ -526,7 +852,7 @@ export default function CitizenDashboard({
 
           {/* User Manual */}
           <div className="relative" ref={manualRef}>
-            <button 
+            <button
               onClick={() => {
                 setIsManualDropdownOpen(!isManualDropdownOpen);
                 setIsLmsDropdownOpen(false);
@@ -540,13 +866,13 @@ export default function CitizenDashboard({
             </button>
             {isManualDropdownOpen && (
               <div className="absolute right-0 mt-1.5 w-48 bg-white border border-slate-200 rounded-md shadow-lg py-1.5 z-50 text-left">
-                <button 
+                <button
                   onClick={() => { alert('Downloading Citizen User Manual PDF (Mock)'); setIsManualDropdownOpen(false); }}
                   className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0"
                 >
                   Citizen User Manual
                 </button>
-                <button 
+                <button
                   onClick={() => { alert('Downloading Officer User Manual PDF (Mock)'); setIsManualDropdownOpen(false); }}
                   className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0"
                 >
@@ -558,7 +884,7 @@ export default function CitizenDashboard({
 
           {/* Language */}
           <div className="relative" ref={langRef}>
-            <button 
+            <button
               onClick={() => {
                 setIsLangDropdownOpen(!isLangDropdownOpen);
                 setIsLmsDropdownOpen(false);
@@ -581,7 +907,7 @@ export default function CitizenDashboard({
 
           {/* Profile Dropdown */}
           <div className="relative border-l border-slate-200 pl-2 ml-1" ref={profileRef}>
-            <button 
+            <button
               onClick={() => {
                 setIsProfileDropdownOpen(!isProfileDropdownOpen);
                 setIsLmsDropdownOpen(false);
@@ -602,7 +928,7 @@ export default function CitizenDashboard({
                   <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Logged in as</span>
                   <span className="block text-xs font-bold text-slate-800 truncate">{user?.email || 'sai@samadhan.jk.gov.in'}</span>
                 </div>
-                <button 
+                <button
                   onClick={() => { setIsProfileDropdownOpen(false); onLogout(); }}
                   className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-650 hover:bg-red-50 cursor-pointer bg-transparent border-0 flex items-center gap-1.5"
                 >
@@ -617,11 +943,10 @@ export default function CitizenDashboard({
 
       {/* ── Outer Body Layout Row ── */}
       <div className="flex-1 flex flex-col md:flex-row relative min-h-[calc(100vh-64px)]">
-        
+
         {/* ── Left Sidebar: Dark Themed navigation ── */}
-        <aside className={`bg-[#1f2e42] text-white flex flex-col justify-between shrink-0 select-none transition-all duration-300 z-30 ${
-          isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden'
-        } fixed md:relative h-[calc(100vh-64px)] md:h-auto`}>
+        <aside className={`bg-[#1f2e42] text-white flex flex-col justify-between shrink-0 select-none transition-all duration-300 z-30 ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden'
+          } fixed md:relative h-[calc(100vh-64px)] md:h-auto`}>
           <div className="flex flex-col">
             {activeView === 'dashboard' ? (
               <nav className="p-4 space-y-1.5">
@@ -683,7 +1008,7 @@ export default function CitizenDashboard({
 
         {/* ── Main Content Area ── */}
         <main className="flex-1 flex flex-col p-6 space-y-6 overflow-x-hidden pb-16">
-          
+
           {/* Breadcrumb Header & Notification Bell */}
           <div className="flex justify-between items-center border-b border-slate-200 pb-4">
             <h2 className="text-xl font-bold tracking-tight text-slate-800 flex items-center gap-2">
@@ -694,15 +1019,15 @@ export default function CitizenDashboard({
               ) : (
                 <>
                   Lodge Relevance <span className="text-slate-350 font-normal">|</span> <span className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded">
-                    {activeView === 'lodge_appeal' ? 'Lodge Appeal' : 'Lodge Grievance'}
+                    {activeView === 'acknowledgment' ? 'Acknowledgment' : activeView === 'lodge_appeal' ? 'Lodge Appeal' : 'Lodge Grievance'}
                   </span>
                 </>
               )}
             </h2>
-            
+
             <div className="flex items-center gap-3">
               {activeView === 'dashboard' && (
-                <button 
+                <button
                   onClick={handleLoadDemoData}
                   className="px-3.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
                   title="Populate dashboard with sample grievance records"
@@ -727,7 +1052,7 @@ export default function CitizenDashboard({
             <>
               {/* Stats Metrics Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                
+
                 {/* Card 1: Total Submitted */}
                 <div className="bg-[#1e40af] text-white p-5 rounded-xl shadow-md border border-blue-800/10 flex justify-between items-center relative overflow-hidden select-none transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
                   <div className="space-y-1 z-10 text-left">
@@ -777,21 +1102,21 @@ export default function CitizenDashboard({
 
               {/* Grievances List Container */}
               <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
-                
+
                 {/* List Card Header */}
                 <div className="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
                   <h3 className="text-base font-bold text-slate-800 uppercase tracking-wide">
                     List of Grievances
                   </h3>
-                  
+
                   <div className="flex items-center gap-4">
                     {/* Center: Filter option as bordered legend box */}
                     <fieldset className="border border-indigo-400 rounded-lg px-4 py-1.5 text-xs">
                       <legend className="text-indigo-600 font-bold px-1.5 text-[9px] uppercase tracking-wider">Filter</legend>
                       <div className="flex items-center gap-3">
                         <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none">
-                          <input 
-                            type="radio" 
+                          <input
+                            type="radio"
                             name="filterSource"
                             checked={filterType === 'All'}
                             onChange={() => { setFilterType('All'); setCurrentPage(1); }}
@@ -800,8 +1125,8 @@ export default function CitizenDashboard({
                           <span>All</span>
                         </label>
                         <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none">
-                          <input 
-                            type="radio" 
+                          <input
+                            type="radio"
                             name="filterSource"
                             checked={filterType === 'Web'}
                             onChange={() => { setFilterType('Web'); setCurrentPage(1); }}
@@ -810,8 +1135,8 @@ export default function CitizenDashboard({
                           <span>Web</span>
                         </label>
                         <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none">
-                          <input 
-                            type="radio" 
+                          <input
+                            type="radio"
                             name="filterSource"
                             checked={filterType === 'Mobile'}
                             onChange={() => { setFilterType('Mobile'); setCurrentPage(1); }}
@@ -824,7 +1149,7 @@ export default function CitizenDashboard({
 
                     {/* Right: Export buttons in capsule format */}
                     <div className="flex gap-2">
-                      <button 
+                      <button
                         onClick={() => alert('Exporting to Excel (Mock)')}
                         className="w-9 h-9 rounded-full bg-[#0f2d59] text-white flex items-center justify-center hover:opacity-90 transition-all cursor-pointer border-0 shadow-sm"
                         title="Export as XLS"
@@ -835,7 +1160,7 @@ export default function CitizenDashboard({
                           <text x="7" y="18" fontSize="6.5" fontWeight="bold" fill="currentColor" fontFamily="monospace">XLS</text>
                         </svg>
                       </button>
-                      <button 
+                      <button
                         onClick={() => alert('Exporting to PDF (Mock)')}
                         className="w-9 h-9 rounded-full bg-[#18181b] text-white flex items-center justify-center hover:opacity-90 transition-all cursor-pointer border-0 shadow-sm"
                         title="Export as PDF"
@@ -872,8 +1197,8 @@ export default function CitizenDashboard({
                   <div className="relative w-full sm:w-64 flex items-center gap-2">
                     <span className="text-xs font-semibold text-slate-650 select-none">Search:</span>
                     <div className="relative flex-1">
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={searchQuery}
                         onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                         className="px-3 py-1.5 w-full border border-slate-300 rounded-md text-xs outline-none bg-white focus:border-[#164581] transition-all"
@@ -933,7 +1258,7 @@ export default function CitizenDashboard({
                               {getStatusBadge(item.status)}
                             </td>
                             <td className="px-4 py-3 border border-slate-200 text-center whitespace-nowrap">
-                              <button 
+                              <button
                                 onClick={() => alert(`Details:\n\nReference: ${item.refNum}\nDepartment: ${getDeptName(item.department)}\nCategory: ${item.category}\nSubject: ${item.subject}\nDescription: ${item.description}\nDate: ${item.date}\nStatus: ${item.status}`)}
                                 className="px-2.5 py-1 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded transition-all bg-white cursor-pointer font-bold"
                               >
@@ -958,7 +1283,7 @@ export default function CitizenDashboard({
                   <div>
                     Showing {totalItems === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + pageSize, totalItems)} of {totalItems} entries
                   </div>
-                  
+
                   {/* Pagination Actions */}
                   <div className="flex items-center gap-4 select-none">
                     <button
@@ -980,6 +1305,86 @@ export default function CitizenDashboard({
 
               </div>
             </>
+          ) : activeView === 'acknowledgment' ? (
+            /* Acknowledgment Slip Screen */
+            <div className="flex flex-col items-center justify-start min-h-[calc(100vh-150px)] p-4 md:p-8 bg-slate-100/50 rounded-2xl border border-slate-200">
+
+              {/* Slip Document */}
+              <div className="bg-white shadow-xl max-w-3xl w-full p-8 md:p-12 border border-slate-300 font-serif text-slate-800 relative leading-relaxed text-left print:shadow-none print:border-none print:p-0">
+
+                {/* Header */}
+                <div className="flex justify-between items-start border-b-2 border-slate-400 pb-4 mb-6">
+                  <img src={emblemImg} className="h-16 md:h-20 w-auto object-contain" alt="Emblem" />
+                  <div className="text-center flex-1 mx-4 space-y-1">
+                    <h1 className="text-sm md:text-lg font-bold uppercase font-sans text-slate-900 tracking-wide">Government of Jammu and Kashmir</h1>
+                    <h2 className="text-xs md:text-base font-bold uppercase font-sans text-slate-800">Department of Public Grievances</h2>
+                    <p className="text-[9px] md:text-[10px] text-slate-650 font-sans">
+                      web portal: <span className="underline text-blue-600 font-mono">samadhan.jk.gov.in</span> email: <span className="underline text-blue-600 font-mono">jk-grievance@jk.gov.in</span>
+                    </p>
+                  </div>
+                  <img src={logoImg} className="h-16 md:h-20 w-auto object-contain" alt="JK Samadhan 3.0" />
+                </div>
+
+                {/* Subject Line */}
+                <div className="mb-6">
+                  <h3 className="text-xs md:text-sm font-bold text-slate-900 uppercase tracking-wide">
+                    Subject: Acknowledgment of Grievance Registration - {submittedGrievanceDetails?.uniqId}
+                  </h3>
+                </div>
+
+                {/* Letter Body */}
+                <div className="space-y-4 text-[11px] md:text-xs font-medium text-slate-800">
+                  <p>Sir / Madam <span className="font-bold uppercase text-slate-950">{submittedGrievanceDetails?.name}</span>,</p>
+
+                  <p>
+                    Your grievance has been registered on <strong className="text-slate-950">JK Samadhan Portal</strong> with Grievance ID <strong className="font-sans font-black text-slate-950">{submittedGrievanceDetails?.uniqId}</strong> on <strong className="font-sans text-slate-950">{submittedGrievanceDetails?.date}</strong>. Your grievance has been forwarded to the <strong className="text-slate-950 uppercase">{submittedGrievanceDetails?.department}</strong> for redressal / appropriate action.
+                  </p>
+
+                  <p>
+                    You can track the progress of your grievance online by visiting the Jammu and Kashmir Government Grievance Portal - JK Samadhan ( <span className="underline text-blue-700 font-bold font-mono">https://samadhan.jk.gov.in/trackApp</span> ) by entering your <strong className="text-slate-950">Grievance ID and Phone No</strong> (provided in your application).
+                  </p>
+                </div>
+
+                {/* Signature Block */}
+                <div className="mt-12 flex flex-col items-end text-[10px] md:text-[11px] font-sans text-slate-800 text-right space-y-1">
+                  <p className="italic mb-4">Yours Sincerely,</p>
+                  <p className="font-bold text-slate-900">Department of Public Grievances</p>
+                  <p>Civil Secretariat, Jammu</p>
+                  <p>Church Lane, Sonwar, Srinagar</p>
+                  <p className="text-[9px] text-slate-650 mt-1">Tele Nos.: 0191-2560265, 2560110, 2566182 (Jammu)</p>
+                  <p className="text-[9px] text-slate-650">0194-2483236, 2502910, 2502911 (Srinagar)</p>
+                  <p className="text-[9px] text-slate-650">Toll Free No: 1905 (J&K)</p>
+                </div>
+
+                {/* Warning Footer */}
+                <div className="mt-12 text-center border-t border-slate-200 pt-4">
+                  <p className="text-[9px] md:text-[10px] font-bold text-red-600 tracking-wider">
+                    This is an automated, system-generated acknowledgement slip.
+                  </p>
+                </div>
+
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 mt-6 print:hidden">
+                <button
+                  onClick={() => window.print()}
+                  className="px-6 py-2 bg-[#164581] hover:bg-[#0f305c] text-white text-xs font-black uppercase tracking-wider rounded shadow transition-all cursor-pointer flex items-center gap-1.5 border-0"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  <span>Print Slip</span>
+                </button>
+                <button
+                  onClick={() => setActiveView('dashboard')}
+                  className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-black uppercase tracking-wider rounded shadow transition-all cursor-pointer border-0"
+                >
+                  Go to Dashboard
+                </button>
+              </div>
+
+            </div>
           ) : !isGrievanceAgreed ? (
             /* Checklist/Agreement Screen before opening form */
             <div className="flex justify-start">
@@ -996,10 +1401,10 @@ export default function CitizenDashboard({
                 </ol>
 
                 <div className="mt-8 flex items-start gap-2.5">
-                  <input 
-                    type="checkbox" 
-                    id="agreeCheck" 
-                    checked={hasAgreed} 
+                  <input
+                    type="checkbox"
+                    id="agreeCheck"
+                    checked={hasAgreed}
                     onChange={(e) => setHasAgreed(e.target.checked)}
                     className="w-4.5 h-4.5 rounded border-slate-350 text-[#1d4ed8] focus:ring-indigo-150 cursor-pointer mt-0.5 animate-pulse"
                   />
@@ -1019,11 +1424,139 @@ export default function CitizenDashboard({
                 </div>
               </div>
             </div>
+          ) : activeView === 'lodge_appeal' ? (
+            /* Lodge Appeal Form */
+            <div className="space-y-6">
+              <form onSubmit={handleAppealSubmit} className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 text-left space-y-6">
+
+                {/* Lodge Appeal Header */}
+                <div>
+                  <h3 className="text-sm font-bold text-[#164581] mb-3 uppercase tracking-wide">
+                    Lodge Appeal
+                  </h3>
+                  <hr className="border-slate-200 mb-4" />
+                </div>
+
+                {/* Grievance ID Select */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-xs">
+                  <span className="font-bold text-slate-700 min-w-[150px]">Grievance ID: *</span>
+                  <select
+                    value={selectedGrievanceId}
+                    onChange={(e) => handleGrievanceSelect(e.target.value)}
+                    className="flex-1 max-w-md border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] cursor-pointer"
+                  >
+                    <option value="">Select</option>
+                    {grievances.map(g => (
+                      <option key={g.id || g.refNum} value={g.id || g.refNum}>{g.uniqId || g.refNum}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Grievance Details Section */}
+                <div>
+                  <h3 className="text-sm font-bold text-[#164581] mb-3 uppercase tracking-wide">
+                    Grievance Details
+                  </h3>
+                  <div className="border border-slate-200 rounded overflow-hidden divide-y divide-slate-200 text-xs">
+                    {/* Row 1 */}
+                    <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-200">
+                      <div className="flex-1 flex">
+                        <div className="w-1/3 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Name:</div>
+                        <div className="w-2/3 px-4 py-2.5 font-medium text-slate-800 uppercase">
+                          {selectedGrievance ? (selectedGrievance.citizenName || user?.name) : ''}
+                        </div>
+                      </div>
+                      <div className="flex-1 flex">
+                        <div className="w-1/3 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Mobile No.:</div>
+                        <div className="w-2/3 px-4 py-2.5 font-medium text-slate-800">
+                          {selectedGrievance ? (selectedGrievance.citizenPhone || user?.phone) : ''}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Row 2 */}
+                    <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-200">
+                      <div className="flex-1 flex">
+                        <div className="w-1/3 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Email Id:</div>
+                        <div className="w-2/3 px-4 py-2.5 font-medium text-slate-800">
+                          {selectedGrievance ? (selectedGrievance.submittedBy?.email || user?.email) : ''}
+                        </div>
+                      </div>
+                      <div className="flex-1 flex">
+                        <div className="w-1/3 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Address:</div>
+                        <div className="w-2/3 px-4 py-2.5 font-medium text-slate-800 uppercase">
+                          {user?.address || 'NA'}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Row 3 */}
+                    <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-200">
+                      <div className="flex-1 flex">
+                        <div className="w-1/3 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Department:</div>
+                        <div className="w-2/3 px-4 py-2.5 font-medium text-slate-800 uppercase">
+                          {selectedGrievance ? selectedGrievance.department : ''}
+                        </div>
+                      </div>
+                      <div className="flex-1 flex">
+                        <div className="w-1/3 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Category:</div>
+                        <div className="w-2/3 px-4 py-2.5 font-medium text-slate-800 uppercase">
+                          {selectedGrievance ? selectedGrievance.grievanceCategory : ''}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details Textarea */}
+                <div className="flex flex-col sm:flex-row gap-4 text-xs">
+                  <span className="font-bold text-slate-700 min-w-[150px] pt-2">Details: *</span>
+                  <div className="flex-1 max-w-xl space-y-1">
+                    <textarea
+                      value={appealDescription}
+                      onChange={(e) => handleDescriptionChange(e.target.value)}
+                      placeholder="Details of appeal."
+                      rows={5}
+                      className="w-full border border-slate-350 rounded px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] resize-y"
+                    ></textarea>
+                    <div className="flex justify-between font-bold text-red-650 scale-95 origin-left">
+                      <span>Remaining word's {3000 - appealDescription.length}.</span>
+                      <span>Special characters are not allowed.</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* File Upload */}
+                <div className="flex flex-col sm:flex-row gap-4 text-xs">
+                  <span className="font-bold text-slate-700 min-w-[150px] pt-1.5">File Upload:</span>
+                  <div className="flex-1 max-w-xl space-y-1">
+                    <input
+                      type="file"
+                      onChange={handleAppealFileChange}
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      className="w-full border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] cursor-pointer"
+                    />
+                    <div className="font-bold text-red-650 scale-95 origin-left">
+                      JPEG,JPG,PNG,PDF only (5MB)
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex justify-center pt-4">
+                  <button
+                    type="submit"
+                    className="px-8 py-2.5 bg-[#164581] hover:bg-[#0f305c] text-white text-xs font-black uppercase tracking-wider rounded-full shadow-md hover:shadow-lg transition-all border-0 cursor-pointer"
+                  >
+                    Submit Appeal
+                  </button>
+                </div>
+
+              </form>
+            </div>
           ) : (
             /* Lodge Relevance Form */
             <div className="space-y-6">
               <form onSubmit={handleFormSubmit} className="bg-white rounded-lg border border-slate-200 shadow-sm p-6 text-left space-y-6">
-                
+
                 {/* 1. Complain/Grievance Submitted by Section */}
                 <div>
                   <h3 className="text-sm font-bold text-[#164581] mb-3 uppercase tracking-wide">
@@ -1036,7 +1569,7 @@ export default function CitizenDashboard({
                     </div>
                     <div className="flex">
                       <div className="w-1/4 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Mobile No.:</div>
-                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800">{user?.mobile || '9339399397'}</div>
+                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800">{user?.phone || user?.mobile || '9339399397'}</div>
                     </div>
                     <div className="flex">
                       <div className="w-1/4 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Email Id:</div>
@@ -1052,19 +1585,19 @@ export default function CitizenDashboard({
                     </div>
                     <div className="flex">
                       <div className="w-1/4 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Address:</div>
-                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800 uppercase">{user?.address || 'khammam'}</div>
+                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800 uppercase">{user?.address || 'NA'}</div>
                     </div>
                     <div className="flex">
                       <div className="w-1/4 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">Pincode:</div>
-                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800">{user?.pincode || '507001'}</div>
+                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800">{user?.pincode || 'NA'}</div>
                     </div>
                     <div className="flex">
                       <div className="w-1/4 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">State:</div>
-                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800 uppercase">{user?.state || 'TELANGANA'}</div>
+                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800 uppercase">{user?.state || 'Other'}</div>
                     </div>
                     <div className="flex">
                       <div className="w-1/4 bg-[#f8fafc] px-4 py-2.5 font-bold text-slate-700 border-r border-slate-200 flex items-center">District:</div>
-                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800 uppercase">{user?.district || 'KHAMMAM'}</div>
+                      <div className="w-3/4 px-4 py-2.5 font-medium text-slate-800 uppercase">{user?.district || 'Other'}</div>
                     </div>
                   </div>
                 </div>
@@ -1113,7 +1646,7 @@ export default function CitizenDashboard({
                     className="flex-1 max-w-md border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] cursor-pointer"
                   >
                     <option value="">--Select Department--</option>
-                    {departments.map(dept => (
+                    {dbDepartments.map(dept => (
                       <option key={dept.id} value={dept.id}>{dept.name}</option>
                     ))}
                   </select>
@@ -1129,23 +1662,47 @@ export default function CitizenDashboard({
                     className="flex-1 max-w-md border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
                   >
                     <option value="">--Select category--</option>
-                    {selectedDept && categories[selectedDept]?.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    {dbCategories.map(cat => (
+                      <option key={cat.id} value={cat.name}>{cat.name}</option>
                     ))}
                   </select>
                 </div>
+
+                {/* 4.5 Next level Category of Grievance */}
+                {dbSubCategories.length > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-xs">
+                    <span className="font-bold text-slate-700 min-w-[150px]">Next level Category of Grievance:</span>
+                    <select
+                      value={selectedSubCategory}
+                      onChange={(e) => setSelectedSubCategory(e.target.value)}
+                      className="flex-1 max-w-md border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] cursor-pointer"
+                    >
+                      <option value="">Select</option>
+                      {dbSubCategories.map(sub => (
+                        <option key={sub.id} value={sub.name}>{sub.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* 5. Pertain Division */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-xs">
                   <span className="font-bold text-slate-700 min-w-[150px]">Pertain Division: *</span>
                   <select
-                    value={pertainDivision}
-                    onChange={(e) => { setPertainDivision(e.target.value); setPertainDistrict(''); }}
+                    value={selectedDivisionId}
+                    onChange={(e) => {
+                      const divId = e.target.value;
+                      setSelectedDivisionId(divId);
+                      const selectedDivObj = dbDivisions.find(d => String(d.id) === String(divId));
+                      setPertainDivision(selectedDivObj ? selectedDivObj.name : '');
+                      setPertainDistrict('');
+                    }}
                     className="flex-1 max-w-md border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] cursor-pointer"
                   >
-                    <option value="">Select</option>
-                    <option value="Jammu">Jammu</option>
-                    <option value="Kashmir">Kashmir</option>
+                    <option value="">Select Division</option>
+                    {dbDivisions.map(div => (
+                      <option key={div.id} value={div.id}>{div.name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -1154,16 +1711,13 @@ export default function CitizenDashboard({
                   <span className="font-bold text-slate-700 min-w-[150px]">Pertain District: *</span>
                   <select
                     value={pertainDistrict}
-                    disabled={!pertainDivision}
+                    disabled={!selectedDivisionId}
                     onChange={(e) => setPertainDistrict(e.target.value)}
                     className="flex-1 max-w-md border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
                   >
                     <option value="">Select District</option>
-                    {pertainDivision === 'Jammu' && ['Jammu', 'Samba', 'Kathua', 'Udhampur', 'Reasi', 'Ramban', 'Doda', 'Kishtwar', 'Poonch', 'Rajouri'].map(dist => (
-                      <option key={dist} value={dist}>{dist}</option>
-                    ))}
-                    {pertainDivision === 'Kashmir' && ['Srinagar', 'Budgam', 'Pulwama', 'Anantnag', 'Baramulla', 'Kupwara', 'Shopian', 'Kulgam', 'Ganderbal', 'Bandipora'].map(dist => (
-                      <option key={dist} value={dist}>{dist}</option>
+                    {dbDistricts.map(dist => (
+                      <option key={dist.id} value={dist.name}>{dist.name}</option>
                     ))}
                   </select>
                 </div>
@@ -1197,9 +1751,89 @@ export default function CitizenDashboard({
                   </div>
                 </div>
 
+                {/* Municipality & Ward Section */}
+                {municipalityOrBlock === 'Municipality' && (
+                  <div className="flex flex-col sm:flex-row gap-4 text-xs">
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <span className="font-bold text-slate-700">Municipality *</span>
+                      <select
+                        value={selectedMunicipality}
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          setSelectedMunicipality(name);
+                          const obj = dbMunicipalities.find(m => m.name === name);
+                          setSelectedMunicipalityId(obj ? obj.id : '');
+                          setSelectedWard('');
+                        }}
+                        className="w-full border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] cursor-pointer"
+                      >
+                        <option value="">Select Municipality</option>
+                        {dbMunicipalities.map(muni => (
+                          <option key={muni.id} value={muni.name}>{muni.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <span className="font-bold text-slate-700">Ward</span>
+                      <select
+                        value={selectedWard}
+                        disabled={!selectedMunicipalityId}
+                        onChange={(e) => setSelectedWard(e.target.value)}
+                        className="w-full border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
+                      >
+                        <option value="">Select Ward</option>
+                        {dbWards.map(ward => (
+                          <option key={ward.id} value={ward.name}>{ward.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Block & Panchayat Section */}
+                {municipalityOrBlock === 'Block' && (
+                  <div className="flex flex-col sm:flex-row gap-4 text-xs">
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <span className="font-bold text-slate-700">Block *</span>
+                      <select
+                        value={selectedBlock}
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          setSelectedBlock(name);
+                          const obj = dbBlocks.find(b => b.name === name);
+                          setSelectedBlockId(obj ? obj.id : '');
+                          setSelectedPanchayat('');
+                        }}
+                        className="w-full border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] cursor-pointer"
+                      >
+                        <option value="">Select Block</option>
+                        {dbBlocks.map(block => (
+                          <option key={block.id} value={block.name}>{block.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      <span className="font-bold text-slate-700">Panchayat</span>
+                      <select
+                        value={selectedPanchayat}
+                        disabled={!selectedBlockId}
+                        onChange={(e) => setSelectedPanchayat(e.target.value)}
+                        className="w-full border border-slate-350 rounded bg-white px-3 py-2 outline-none font-medium text-slate-800 focus:border-[#164581] disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
+                      >
+                        <option value="">Select Panchayat</option>
+                        {dbPanchayats.map(pan => (
+                          <option key={pan.id} value={pan.name}>{pan.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 {/* Shaded gray section enclosing Description, speech-to-text, and uploads */}
                 <div className="bg-[#f1f5f9] border border-slate-200 rounded-lg p-5 space-y-5 text-xs">
-                  
+
                   {/* Description text area */}
                   <div className="flex items-start gap-4">
                     <span className="font-bold text-slate-700 min-w-[130px] pt-2">Description: *</span>
@@ -1220,16 +1854,15 @@ export default function CitizenDashboard({
                           <div>Special characters are not allowed.</div>
                         </div>
                       </div>
-                      
+
                       {/* Voice Microphone trigger */}
                       <button
                         type="button"
                         onClick={startSpeechRecognition}
-                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-0 shadow cursor-pointer transition-all ${
-                          isListening 
-                            ? 'bg-red-600 text-white animate-pulse' 
+                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-0 shadow cursor-pointer transition-all ${isListening
+                            ? 'bg-red-600 text-white animate-pulse'
                             : 'bg-[#5b21b6] hover:bg-[#4c1d95] text-white'
-                        }`}
+                          }`}
                         title="Speech to Text"
                       >
                         <Mic className="h-4.5 w-4.5" />
@@ -1252,7 +1885,7 @@ export default function CitizenDashboard({
                           JPG, JPEG, PNG, PDF, DOC (MAX 2MB)
                         </div>
                       </div>
-                      
+
                       {/* Location marker trigger */}
                       <button
                         type="button"

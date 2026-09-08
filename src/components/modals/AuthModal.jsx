@@ -108,27 +108,53 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
     }
   };
 
-  // Reset modal state on open
+  // Reset modal state on open / mode change
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
       setStep(1);
       setShowPassword(false);
-      reset();
-      fetchCaptcha();
-      generateLocalCaptcha();
-      setSelectedDivision('');
-      setDistricts([]);
-      setDivisions([]);
+      reset({
+        mobile: '',
+        password: '',
+        otp: '',
+        username: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        gender: '',
+        dob: '',
+        state: '',
+        district: '',
+        address: '',
+        pincode: '',
+        captcha: '',
+        confirmPassword: ''
+      });
+      if (initialMode === 'register') {
+        fetchCaptcha();
+      } else if (initialMode === 'forgot') {
+        generateLocalCaptcha();
+      }
     }
   }, [isOpen, initialMode, reset]);
 
+  useEffect(() => {
+    if (mode === 'register') {
+      fetchCaptcha();
+    } else if (mode === 'forgot') {
+      generateLocalCaptcha();
+    }
+  }, [mode]);
+
   const handleSendOTP = async () => {
-    const isValid = await trigger(['mobile', 'password']);
+    const isOfficial = mode === 'admin';
+    const fieldToValidate = isOfficial ? 'email' : 'mobile';
+    const isValid = await trigger([fieldToValidate, 'password']);
     if (isValid) {
       try {
-        // Trigger login initiation to trigger mock OTP send on backend
-        const response = await login(formValues.mobile, formValues.password, '');
+        const identifier = isOfficial ? formValues.email : formValues.mobile;
+        const response = await login(identifier, formValues.password, '');
         if (response.status === 'OTP_REQUIRED') {
           setStep(2);
         } else if (response.status === 'SUCCESS') {
@@ -136,22 +162,24 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
           onClose();
         }
       } catch (err) {
-        alert(err.response?.data?.message || err.message || 'Login credentials incorrect');
+        alert(err.response?.data?.error || err.response?.data?.message || err.message || 'Login credentials incorrect');
       }
     }
   };
 
   const handleVerifyOTP = async () => {
+    const isOfficial = mode === 'admin';
     const isValid = await trigger(['otp']);
     if (isValid) {
       try {
-        const response = await login(formValues.mobile, formValues.password, formValues.otp);
+        const identifier = isOfficial ? formValues.email : formValues.mobile;
+        const response = await login(identifier, formValues.password, formValues.otp);
         if (response.status === 'SUCCESS') {
           onLoginSuccess(response.user);
           onClose();
         }
       } catch (err) {
-        alert(err.response?.data?.message || err.message || 'Invalid OTP code');
+        alert(err.response?.data?.error || err.response?.data?.message || err.message || 'Invalid OTP code');
       }
     }
   };
@@ -227,22 +255,45 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
           
           {/* LOGIN MODE */}
           {(mode === 'login' || mode === 'admin') && step === 1 && (
-            <div className="space-y-4 text-left">
-              <div className="space-y-1">
-                <label className="block font-bold text-slate-700 uppercase">Mobile Number</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-3 text-slate-400">
-                    <Phone className="h-4 w-4" />
-                  </span>
-                  <input 
-                    type="text" 
-                    placeholder="Enter 10-digit mobile"
-                    {...register('mobile', { required: 'Mobile is required', pattern: /^\d{10}$/ })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 outline-none font-mono"
-                  />
+            <form onSubmit={(e) => { e.preventDefault(); handleSendOTP(); }} className="space-y-4 text-left">
+              {mode === 'admin' ? (
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700 uppercase">Official Email Address / Username</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-3 text-slate-400">
+                      <Mail className="h-4 w-4" />
+                    </span>
+                    <input 
+                      type="text" 
+                      placeholder="Enter official email or username"
+                      {...register('email', { required: 'Official email or username is required' })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 outline-none"
+                    />
+                  </div>
+                  {errors.email && <span className="text-[10px] text-red-600 block font-bold">{errors.email.message}</span>}
                 </div>
-                {errors.mobile && <span className="text-[10px] text-red-600 block font-bold">Valid 10-digit mobile is required</span>}
-              </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700 uppercase">Mobile Number</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-3 text-slate-400">
+                      <Phone className="h-4 w-4" />
+                    </span>
+                    <input 
+                      type="text" 
+                      maxLength={10}
+                      placeholder="Enter 10-digit mobile"
+                      {...register('mobile', { 
+                        required: 'Mobile is required', 
+                        pattern: /^\d{10}$/,
+                        onChange: (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); }
+                      })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 outline-none font-mono"
+                    />
+                  </div>
+                  {errors.mobile && <span className="text-[10px] text-red-600 block font-bold">Valid 10-digit mobile is required</span>}
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="block font-bold text-slate-700 uppercase">Password</label>
@@ -267,37 +318,11 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
                 {errors.password && <span className="text-[10px] text-red-650 block font-bold">{errors.password.message}</span>}
               </div>
 
-              {/* Captcha Box */}
-              {captchaImage && (
-                <div className="space-y-2">
-                  <label className="block font-bold text-slate-700 uppercase">Enter Verification Captcha</label>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-slate-100 p-1.5 rounded-lg border border-slate-200 flex-1 flex justify-center">
-                      <img src={captchaImage} alt="Captcha" className="h-8 object-contain select-none pointer-events-none" />
-                    </div>
-                    <button 
-                      type="button" 
-                      onClick={handleRefreshCaptcha}
-                      className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-250 rounded-lg text-slate-650 cursor-pointer"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <input 
-                    type="text" 
-                    placeholder="Enter captcha text"
-                    {...register('captcha', { required: 'Captcha is required' })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 outline-none uppercase tracking-widest font-bold font-mono"
-                  />
-                  {errors.captcha && <span className="text-[10px] text-red-650 block font-bold">{errors.captcha.message}</span>}
-                </div>
-              )}
-
               <button 
                 onClick={handleSendOTP}
                 className="w-full py-2.5 bg-[#164581] hover:bg-[#08182d] text-white font-bold rounded-lg shadow-xs cursor-pointer border-0 mt-2 flex items-center justify-center gap-1.5"
               >
-                <span>Verify Credentials & Send OTP</span>
+                <span>{mode === 'admin' ? 'Sign In to Portal' : 'Verify Credentials & Send OTP'}</span>
                 <ShieldCheck className="h-4.5 w-4.5 text-white" />
               </button>
 
@@ -306,15 +331,15 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
                 {mode === 'admin' ? (
                   <button type="button" onClick={() => setMode('login')} className="text-[#ff9933] font-bold hover:underline cursor-pointer bg-transparent border-0">Citizen Sign In</button>
                 ) : (
-                  <button type="button" onClick={() => setMode('register')} className="text-[#ff9933] font-bold hover:underline cursor-pointer bg-transparent border-0">New User? Register</button>
+                  <button type="button" onClick={() => setMode('admin')} className="text-[#164581] font-bold hover:underline cursor-pointer bg-transparent border-0">Official Sign In</button>
                 )}
               </div>
-            </div>
+            </form>
           )}
 
           {/* OTP STEP */}
           {(mode === 'login' || mode === 'admin') && step === 2 && (
-            <div className="space-y-4 text-left">
+            <form onSubmit={(e) => { e.preventDefault(); handleVerifyOTP(); }} className="space-y-4 text-left">
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3 text-slate-650 leading-relaxed text-xs">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
                 <span>We have sent a 6-digit verification code OTP to your mobile number <strong>{formValues.mobile}</strong>. (Mock OTP: 123456)</span>
@@ -337,7 +362,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
               >
                 Complete Login
               </button>
-            </div>
+            </form>
           )}
 
           {/* REGISTER MODE */}
@@ -377,7 +402,17 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-700 uppercase">Mobile Number</label>
-                  <input type="text" placeholder="10 digits" {...register('mobile', { required: true, pattern: /^\d{10}$/ })} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 outline-none font-mono" />
+                  <input 
+                    type="text" 
+                    maxLength={10}
+                    placeholder="10 digits" 
+                    {...register('mobile', { 
+                      required: true, 
+                      pattern: /^\d{10}$/,
+                      onChange: (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); }
+                    })} 
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-2 outline-none font-mono" 
+                  />
                 </div>
                 <div className="space-y-1">
                   <label className="block font-bold text-slate-700 uppercase">Email Address</label>
@@ -488,7 +523,16 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
             <form onSubmit={handleSubmit(handleForgotSubmit)} className="space-y-4 text-left">
               <div className="space-y-1">
                 <label className="block font-bold text-slate-700 uppercase">Registered Mobile</label>
-                <input type="text" {...register('mobile', { required: true, pattern: /^\d{10}$/ })} className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2.5 outline-none font-mono" />
+                <input 
+                  type="text" 
+                  maxLength={10}
+                  {...register('mobile', { 
+                    required: true, 
+                    pattern: /^\d{10}$/,
+                    onChange: (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); }
+                  })} 
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2.5 outline-none font-mono" 
+                />
               </div>
               <div className="space-y-1">
                 <label className="block font-bold text-slate-700 uppercase">New Password</label>

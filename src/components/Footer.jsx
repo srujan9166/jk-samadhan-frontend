@@ -38,7 +38,7 @@ export default function Footer() {
             <div className="bg-white p-2 rounded-lg flex items-center justify-center w-fit shadow-md border border-slate-100">
               <img
                 src={raabitaBannerImg}
-                alt="JK Samadhan 2.0 | JK Raabita"
+                alt="JK Samadhan 3.0 | JK Raabita"
                 className="h-10 object-contain"
               />
             </div>

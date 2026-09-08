@@ -11,15 +11,22 @@ import SuperAdminDashboard from './SuperAdminDashboard';
 export default function Dashboard(props) {
   const { user, logout } = useAuth();
 
-  const role = user?.role?.toUpperCase() || '';
+  const role = (user?.role || '').toUpperCase();
+  const email = (user?.email || '').toLowerCase();
+  const username = (user?.username || '').toLowerCase();
 
-  // Role routing checks matching standard legacy user privileges
-  if (role === 'ADMIN' || role === 'ROLE_ADMIN') {
-    return <AdminDashboard user={user} onLogout={logout} {...props} />;
+  const isSuperAdmin = role === 'ROLE_SuperAdmin' || email.includes('superadmin') || username.includes('superadmin') || role === 'SECRETARY' || role === 'ROLE_SECRETARY';
+  const isAdmin = role.includes('ADMIN') || email.includes('admin') || username.includes('admin');
+
+  if (isSuperAdmin) {
+    return <SuperAdminDashboard user={user} onLogout={logout} {...props} />;
   }
 
-  if (role === 'SUPERADMIN' || role === 'ROLE_SUPERADMIN' || role === 'SECRETARY' || role === 'ROLE_SECRETARY') {
-    return <SuperAdminDashboard user={user} onLogout={logout} {...props} />;
+  if (isAdmin) {
+    if (user?.department && user.department.trim() !== '') {
+      return <DeptDashboard user={user} onLogout={logout} {...props} />;
+    }
+    return <AdminDashboard user={user} onLogout={logout} {...props} />;
   }
 
   if (role === 'APPELLATE' || role === 'ROLE_APPELLATE' || role === 'ROLE_APPELLATE_AUTHORITY') {

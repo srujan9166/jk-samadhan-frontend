@@ -86,7 +86,6 @@ export default function AppellateDashboard({ user, onLogout }) {
 
   return (
     <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans select-none animate-fadeIn text-xs">
-      
       {/* Dashboard Subheader */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center shadow-xs">
         <div className="flex items-center gap-3">

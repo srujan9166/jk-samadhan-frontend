@@ -127,7 +127,7 @@ export default function MobileShowcase() {
                 <div className="flex items-center gap-2">
                   <img src={logoImg} alt="JK Samadhan" className="h-6 w-6 object-contain" />
                   <div className="text-left">
-                    <span className="font-display font-extrabold text-[10px] text-slate-800 tracking-tight block">JK Samadhan 2.0</span>
+                    <span className="font-display font-extrabold text-[10px] text-slate-800 tracking-tight block">JK Samadhan 3.0</span>
                     <span className="text-[5px] font-bold text-slate-400 uppercase tracking-wider block">Govt of Jammu & Kashmir</span>
                   </div>
                 </div>
@@ -193,7 +193,7 @@ export default function MobileShowcase() {
                       </div>
                       <div className="flex items-baseline">
                         <span className="font-display font-extrabold text-sm tracking-tight text-[#0b2240]">JK</span>
-                        <span className="font-display font-extrabold text-sm tracking-tight text-[#ff9933]">Samadhan 2.0</span>
+                        <span className="font-display font-extrabold text-sm tracking-tight text-[#ff9933]">Samadhan 3.0</span>
                       </div>
                       <span className="text-[7px] text-slate-400 font-bold uppercase tracking-wider">Government of Jammu & Kashmir</span>
                     </div>
@@ -227,7 +227,7 @@ export default function MobileShowcase() {
                       {/* Inside Mockup Banner */}
                       <div className="flex items-center justify-center gap-1.5 py-1.5 px-2.5 bg-slate-50 border border-slate-100 rounded-xl shadow-xs">
                         <img src={logoImg} alt="JK Samadhan" className="h-4.5 w-4.5 object-contain" />
-                        <span className="font-display font-extrabold text-[8px] text-slate-800 tracking-tight">JK Samadhan 2.0</span>
+                        <span className="font-display font-extrabold text-[8px] text-slate-800 tracking-tight">JK Samadhan 3.0</span>
                         <span className="h-3 w-px bg-slate-200" />
                         {/* Raabita SVG */}
                         <div className="w-4 h-4">
