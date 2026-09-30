@@ -26,6 +26,26 @@ const grievanceService = {
     return response.data;
   },
 
+  getTreeDepartments: async () => {
+    const response = await axiosClient.get('/api/super-admin/tree/departments');
+    return response.data;
+  },
+
+  getTreeMainCategories: async (departmentName) => {
+    const response = await axiosClient.get('/api/super-admin/tree/mainCategories', { params: { departmentName } });
+    return response.data;
+  },
+
+  getTreeSubCategories: async (departmentName, categoryName) => {
+    const response = await axiosClient.get('/api/super-admin/tree/subCategories', { params: { departmentName, categoryName } });
+    return response.data;
+  },
+
+  getTreeGrievances: async (departmentName, categoryName, subCategoryName) => {
+    const response = await axiosClient.get('/api/super-admin/tree/grievances', { params: { departmentName, categoryName, subCategoryName } });
+    return response.data;
+  },
+
   getGrievanceById: async (id) => {
     const response = await axiosClient.get(`/api/grievances/${id}`);
     return response.data;
@@ -174,6 +194,26 @@ const grievanceService = {
   cancelSuperAdminPdfExport: async (jobId) => {
     const response = await axiosClient.post(`/api/super-admin/export/pdf/${jobId}/cancel`);
     return response.data;
+  },
+
+  getPendencyReport: async (params) => {
+    try {
+      const response = await axiosClient.get('/api/super-admin/pendency-report', { params });
+      return response.data;
+    } catch (err) {
+      const response = await axiosClient.get('/api/super-admin/status-wise-report', { params });
+      return response.data;
+    }
+  },
+
+  getPendencyGrievanceDetails: async (params) => {
+    try {
+      const response = await axiosClient.get('/api/super-admin/pendency-report/details', { params });
+      return response.data;
+    } catch (err) {
+      const response = await axiosClient.get('/api/super-admin/status-wise-report/details', { params });
+      return response.data;
+    }
   }
 };
 

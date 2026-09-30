@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import AppRoutes from './routes/AppRoutes';
+import { getRoleRedirectPath } from './routes/RoleRedirectGuard';
 import Navbar from './components/layout/Navbar';
 import FAQ from './components/modals/FAQ';
 import VideoModal from './components/modals/VideoModal';
@@ -53,11 +54,13 @@ function AppContent() {
 
   const handleLoginSuccess = (userData) => {
     setIsAuthOpen(false);
-    navigate('/dashboard', { replace: true });
+    const targetPath = getRoleRedirectPath(userData || user);
+    navigate(targetPath, { replace: true });
   };
 
   const handleLogout = () => {
     logout();
+    sessionStorage.removeItem('samadhan_lastVisitedPath');
     navigate('/', { replace: true });
   };
 
@@ -82,8 +85,8 @@ function AppContent() {
     window.history.pushState(null, null, window.location.href);
 
     const handlePopState = (event) => {
-      if (isLoggedIn && window.location.pathname === '/dashboard') {
-        // Intercept back-navigation on the root dashboard page and lock the user in
+      if (isLoggedIn && (window.location.pathname === '/dashboard' || window.location.pathname.startsWith('/super-admin') || window.location.pathname.startsWith('/monitoring-cell'))) {
+        // Intercept back-navigation on root dashboard pages and lock the user in
         window.history.pushState(null, null, window.location.href);
       }
     };

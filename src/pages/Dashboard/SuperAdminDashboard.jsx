@@ -60,6 +60,11 @@ import axiosClient from '../../api/axiosClient';
 import emblemImg from '../../assets/emblem.png';
 import logoImg from '../../assets/logo.png';
 import CitizenRegistrationReport from './CitizenRegistrationReport';
+import DealingHandGrievancesReport from './DealingHandGrievancesReport';
+import DepartmentUserListReport from './DepartmentUserListReport';
+import StatusWiseReport from './StatusWiseReport';
+import TreeDashboard from './TreeDashboard';
+import PendencyReport from './PendencyReport';
 import JkIgramsDashboardView from './JkIgramsDashboardView';
 import CreateAnnouncementModal from '../../components/modals/CreateAnnouncementModal';
 
@@ -67,10 +72,22 @@ const SUPPORTED_ROLES_MAP = {
   'ROLE_SuperAdmin': 'Super Admin',
   'ROLE_Secretary': 'Secretary',
   'ROLE_DM': 'DM',
-  'ROLE_DealingHand': 'Dealing Hand'
+  'ROLE_DealingHand': 'Dealing Hand',
+  'ROLE_RaabitaHead': 'Raabita Head',
+  'ROLE_RmcHead': 'RMC Head'
 };
 
 export default function SuperAdminDashboard({ user, onLogout }) {
+  const userRole = (user?.role || '').toUpperCase();
+  const userEmail = (user?.email || '').toLowerCase();
+  const userUsername = (user?.username || '').toLowerCase();
+
+  const isSuperAdmin = userRole === 'ROLE_SUPERADMIN' || userRole === 'SUPERADMIN' || userEmail.includes('superadmin') || userUsername.includes('superadmin') || userRole === 'SECRETARY' || userRole === 'ROLE_SECRETARY';
+  const isDM = userRole === 'DM' || userRole === 'ROLE_DM' || userRole === 'ROLE_DISTRICT_MAGISTRATE';
+  const isMonitoringCell = userRole === 'ROLE_MONITORING_CELL' || userRole === 'MONITORING_CELL' || userEmail.includes('monitor') || userUsername.includes('monitor');
+  const isRaabitaHead = userRole === 'ROLE_RAABITA_HEAD' || userRole === 'RAABITA_HEAD' || userRole === 'ROLE_RMC_HEAD' || userRole === 'RMC_HEAD' || userRole === 'RAABITAHEAD' || userRole === 'RMCHEAD' || userRole.includes('RAABITA') || userRole.includes('RMC') || userEmail.includes('raabita') || userUsername.includes('raabita') || userUsername.includes('rmc');
+  const isDealingHand = userRole === 'DEALINGHAND' || userRole === 'ROLE_DEALINGHAND' || userRole === 'DEALING_HAND' || userRole === 'ROLE_DEALING_HAND' || userRole === 'DEALINGHANDHEAD' || userRole === 'DEALING_HAND_HEAD' || userRole === 'ROLE_DEALINGHAND_HEAD' || userRole.includes('DEALING') || userEmail.includes('dealing') || userUsername.includes('dealing');
+
   const [grievances, setGrievances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -197,7 +214,16 @@ export default function SuperAdminDashboard({ user, onLogout }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mappingMenuOpen, setMappingMenuOpen] = useState(true);
   const [misMenuOpen, setMisMenuOpen] = useState(true);
-  const [sidebarActiveItem, setSidebarActiveItem] = useState('Super Admin Dashboard');
+  const [sidebarActiveItem, setSidebarActiveItem] = useState(
+    isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard'
+  );
+
+  // DM / Raabita Head / DealingHand Role Safety Guard: prevent restricted views
+  useEffect(() => {
+    if ((isDM || isRaabitaHead || isDealingHand) && ['Appeal Dashboard', 'Appeal MIS Report', 'Appellate Report', 'Create Department Nodal', 'Create users', 'Create Offices & Designation', 'Department Mapping'].includes(sidebarActiveItem)) {
+      setSidebarActiveItem(isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard');
+    }
+  }, [isDM, isRaabitaHead, isDealingHand, sidebarActiveItem]);
 
   // User Profile states
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
@@ -222,7 +248,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
 
   // Create User Form State (reference screenshot layout)
   const [createUserForm, setCreateUserForm] = useState({
-    userType: '',
+    userType: 'DM',
     firstName: '',
     middleName: '',
     lastName: '',
@@ -230,7 +256,9 @@ export default function SuperAdminDashboard({ user, onLogout }) {
     email: '',
     officeName: '',
     designation: '',
-    password: ''
+    password: '',
+    division: '',
+    district: ''
   });
 
   // Nodal creation states
@@ -406,6 +434,14 @@ export default function SuperAdminDashboard({ user, onLogout }) {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      let targetDistrict = homeDistrictFilter;
+      if (isDM && !targetDistrict && (user?.district || user?.districtName)) {
+        targetDistrict = user.district || user.districtName;
+      }
+      if (targetDistrict === 'Other' || targetDistrict === 'Other/Not Specified' || targetDistrict === 'All') {
+        targetDistrict = '';
+      }
+
       const params = {
         page: currentPage - 1,
         size: entriesPerPage,
@@ -414,7 +450,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
         sortDirection: sortDirection,
         status: statusFilter,
         department: deptFilter,
-        district: homeDistrictFilter,
+        district: targetDistrict || '',
         category: homeCategoryFilter,
         dateFrom: homeDateFromFilter,
         dateTo: homeDateToFilter,
@@ -423,7 +459,16 @@ export default function SuperAdminDashboard({ user, onLogout }) {
         keyFlag: homeKeyFlagFilter
       };
 
-      const res = await grievanceService.getSuperAdminGrievances(params);
+      let res = await grievanceService.getSuperAdminGrievances(params);
+      if ((!res || !res.content || res.content.length === 0) && isDM && targetDistrict) {
+        // Fallback: fetch general grievances if specific district query yielded no results
+        const fallbackParams = { ...params, district: '' };
+        const fallbackRes = await grievanceService.getSuperAdminGrievances(fallbackParams);
+        if (fallbackRes && fallbackRes.content) {
+          res = fallbackRes;
+        }
+      }
+
       if (res && res.content) {
         const formatted = res.content.map((g, idx) => ({
           id: g.id,
@@ -1615,7 +1660,9 @@ export default function SuperAdminDashboard({ user, onLogout }) {
       alert("Please select a User Type.");
       return;
     }
-    if (!createUserForm.lastName.trim() || !createUserForm.mobile.trim() || !createUserForm.email.trim() || !createUserForm.officeName.trim() || !createUserForm.designation.trim() || !createUserForm.password.trim()) {
+    const isNoDistrictUser = createUserForm.userType === 'Raabita Head' || createUserForm.userType === 'RMC Head' || createUserForm.userType === 'Dealing Hand Head';
+    const isUTLevel = createUserForm.division === 'UT' || isNoDistrictUser;
+    if (!createUserForm.firstName.trim() || !createUserForm.lastName.trim() || !createUserForm.mobile.trim() || !createUserForm.email.trim() || !createUserForm.designation.trim() || !createUserForm.password.trim() || !createUserForm.division || (!createUserForm.district && !isNoDistrictUser)) {
       alert("All fields marked with * are mandatory.");
       return;
     }
@@ -1628,15 +1675,15 @@ export default function SuperAdminDashboard({ user, onLogout }) {
       return;
     }
 
-    // Password validation message from screenshot:
-    // "Password should be minimum of 8 characters contain uppercase letter/lowercase letter, digits and special characters between @$!%*?&."
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(createUserForm.password)) {
-      alert("Password should be minimum of 8 characters contain uppercase letter/lowercase letter, digits and special characters between @$!%*?&.");
+      alert("Password should be minimum of 8 characters contain uppercase letter,lowercase letter,digits and special characters between @$!%*?&.");
       return;
     }
 
     try {
+      const derivedDistrict = createUserForm.district || (isNoDistrictUser ? (createUserForm.division || 'UT') : (isUTLevel ? 'UT' : 'All'));
+      const derivedOfficeName = createUserForm.officeName || `Office of ${createUserForm.userType} (${derivedDistrict})`;
       const res = await grievanceService.createOfficialUser({
         userType: createUserForm.userType,
         firstName: createUserForm.firstName,
@@ -1644,15 +1691,17 @@ export default function SuperAdminDashboard({ user, onLogout }) {
         lastName: createUserForm.lastName,
         mobile: createUserForm.mobile,
         email: createUserForm.email,
-        officeName: createUserForm.officeName,
+        officeName: derivedOfficeName,
         designationName: createUserForm.designation,
-        password: createUserForm.password
+        password: createUserForm.password,
+        district: derivedDistrict,
+        division: createUserForm.division
       });
 
       if (res && (res.statusCode === "1" || res.statusName === "Success")) {
-        alert("Official User created successfully!");
+        alert(`User ${createUserForm.firstName} (${createUserForm.userType}) created successfully!`);
         setCreateUserForm({
-          userType: '',
+          userType: 'DM',
           firstName: '',
           middleName: '',
           lastName: '',
@@ -1660,14 +1709,17 @@ export default function SuperAdminDashboard({ user, onLogout }) {
           email: '',
           officeName: '',
           designation: '',
-          password: ''
+          password: '',
+          division: '',
+          district: ''
         });
         setSidebarActiveItem('Super Admin Dashboard');
       } else {
-        alert(res.statusName || "Failed to create official user.");
+        alert(res?.statusName || "Failed to create user. Please check if email/mobile already exists.");
       }
     } catch (err) {
-      alert("Failed to create official user: " + (err.response?.data?.message || err.message));
+      console.error("Error creating user:", err);
+      alert("Error creating user: " + (err.response?.data?.message || err.message || "Failed to save to backend"));
     }
   };
 
@@ -2013,9 +2065,9 @@ export default function SuperAdminDashboard({ user, onLogout }) {
 
           {/* Sidebar Top Title Item */}
           <div className="p-3.5 bg-[#18192a] border-b border-slate-800 flex items-center gap-3">
-            {sidebarActiveItem !== 'Super Admin Dashboard' ? (
+            {sidebarActiveItem !== (isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard') ? (
               <button
-                onClick={() => setSidebarActiveItem('Super Admin Dashboard')}
+                onClick={() => setSidebarActiveItem(isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard')}
                 className="w-full py-2 bg-[#28293d] hover:bg-[#32334d] text-white rounded-full text-xs font-bold flex items-center justify-center gap-2 border-0 cursor-pointer transition-all px-2.5"
                 title="Back to Dashboard"
               >
@@ -2029,7 +2081,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 </div>
                 {!sidebarCollapsed && (
                   <span className="font-bold text-xs text-white tracking-wide truncate">
-                    Super Admin Dashboard
+                    {isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard'}
                   </span>
                 )}
               </>
@@ -2038,6 +2090,120 @@ export default function SuperAdminDashboard({ user, onLogout }) {
 
           {/* Menu Items List */}
           {sidebarActiveItem !== 'Account Settings' && (() => {
+            if (isDealingHand) {
+              const dealingHandMenuItems = [
+                { label: 'DealingHand Dashboard', name: 'DealingHand Dashboard', icon: LayoutDashboard },
+                { label: 'Create DealingHand Users', name: 'Create DealingHand Users', icon: Users },
+                { label: 'User List', name: 'User List', icon: UserCheck },
+                { label: 'Grievance Status', name: 'Grievance Status', icon: Flag },
+              ];
+
+              return (
+                <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
+                  {dealingHandMenuItems.map((item, idx) => {
+                    const Icon = item.icon;
+                    const isActive = sidebarActiveItem === item.name || (item.name === 'DealingHand Dashboard' && (sidebarActiveItem === 'Super Admin Dashboard' || sidebarActiveItem === 'Home'));
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          if (item.name === 'User List') {
+                            setSidebarActiveItem('Department User List');
+                          } else if (item.name === 'Grievance Status') {
+                            setSidebarActiveItem('Status Wise Report');
+                          } else if (item.name === 'Create DealingHand Users') {
+                            setSidebarActiveItem('Create users');
+                          } else {
+                            setSidebarActiveItem(item.name);
+                          }
+                        }}
+                        className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors border-0 cursor-pointer ${
+                          isActive
+                            ? 'bg-[#3b82f6] text-white shadow-sm font-extrabold'
+                            : 'hover:bg-[#28293d] text-slate-300'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        {!sidebarCollapsed && <span>{item.label}</span>}
+                      </button>
+                    );
+                  })}
+                </nav>
+              );
+            }
+
+            if (isRaabitaHead) {
+              const raabitaMenuItems = [
+                { label: 'RMC Head Dashboard', name: 'RMC Head Dashboard', icon: LayoutDashboard },
+                { label: 'Create RMC Users', name: 'Create RMC Users', icon: Users },
+                { label: 'User List', name: 'User List', icon: UserCheck },
+                { label: 'Grievance Status', name: 'Grievance Status', icon: Flag },
+              ];
+
+              return (
+                <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
+                  {raabitaMenuItems.map((item, idx) => {
+                    const Icon = item.icon;
+                    const isActive = sidebarActiveItem === item.name || (item.name === 'RMC Head Dashboard' && (sidebarActiveItem === 'Super Admin Dashboard' || sidebarActiveItem === 'Home'));
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          if (item.name === 'User List') {
+                            setSidebarActiveItem('Department User List');
+                          } else if (item.name === 'Grievance Status') {
+                            setSidebarActiveItem('Status Wise Report');
+                          } else {
+                            setSidebarActiveItem(item.name);
+                          }
+                        }}
+                        className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors border-0 cursor-pointer ${
+                          isActive
+                            ? 'bg-[#3b82f6] text-white shadow-sm font-extrabold'
+                            : 'hover:bg-[#28293d] text-slate-300'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        {!sidebarCollapsed && <span>{item.label}</span>}
+                      </button>
+                    );
+                  })}
+                </nav>
+              );
+            }
+
+            if (isDM) {
+              const dmMenuItems = [
+                { label: 'DM Dashboard', name: 'DM Dashboard', icon: LayoutDashboard },
+                { label: 'Analytical Dashboard', name: 'Analytical Dashboard', icon: BarChart3 },
+                { label: 'Feedback Analysis', name: 'Feedback Analysis', icon: MessageSquare },
+                { label: 'New Feedback Analysis', name: 'New Feedback Analysis', icon: MessageSquare },
+              ];
+
+              return (
+                <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
+                  {dmMenuItems.map((item, idx) => {
+                    const Icon = item.icon;
+                    const isActive = sidebarActiveItem === item.name || (item.name === 'DM Dashboard' && sidebarActiveItem === 'Super Admin Dashboard');
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setSidebarActiveItem(item.name)}
+                        className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors border-0 cursor-pointer ${
+                          isActive
+                            ? 'bg-[#3b82f6] text-white shadow-sm font-extrabold'
+                            : 'hover:bg-[#28293d] text-slate-300'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        {!sidebarCollapsed && <span>{item.label}</span>}
+                      </button>
+                    );
+                  })}
+                </nav>
+              );
+            }
+
             const isAnalyticalContext = [
               'Analytical Dashboard',
               'Citizen Registration List',
@@ -2180,56 +2346,58 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                   </>
                 ) : (
                   <>
-                    {/* Accordion Group: Mapping & User Creation */}
-                    <div className="space-y-1">
-                      <button
-                        onClick={() => setMappingMenuOpen(!mappingMenuOpen)}
-                        className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-colors border-0 cursor-pointer ${mappingMenuOpen ? 'bg-[#3b82f6] text-white shadow-sm' : 'hover:bg-[#28293d] text-slate-300'
-                          }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Sliders className="w-4 h-4 shrink-0" />
-                          {!sidebarCollapsed && <span className="truncate">Mapping & User Creation</span>}
-                        </div>
-                        {!sidebarCollapsed && (
-                          mappingMenuOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+                    {/* Accordion Group: Mapping & User Creation (Visible only for Super Admin) */}
+                    {isSuperAdmin && (
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => setMappingMenuOpen(!mappingMenuOpen)}
+                          className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-colors border-0 cursor-pointer ${mappingMenuOpen ? 'bg-[#3b82f6] text-white shadow-sm' : 'hover:bg-[#28293d] text-slate-300'
+                            }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Sliders className="w-4 h-4 shrink-0" />
+                            {!sidebarCollapsed && <span className="truncate">Mapping & User Creation</span>}
+                          </div>
+                          {!sidebarCollapsed && (
+                            mappingMenuOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
+                          )}
+                        </button>
 
-                      {/* Sub-menu items */}
-                      {mappingMenuOpen && !sidebarCollapsed && (
-                        <div className="pl-4 space-y-1.5 pt-1">
-                          <button
-                            onClick={() => setSidebarActiveItem('Department Mapping')}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${sidebarActiveItem === 'Department Mapping' ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
-                              }`}
-                          >
-                            • Department Mapping
-                          </button>
-                          <button
-                            onClick={() => setSidebarActiveItem('Create Department Nodal')}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${sidebarActiveItem === 'Create Department Nodal' ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
-                              }`}
-                          >
-                            • Create Department Nodal
-                          </button>
-                          <button
-                            onClick={() => setSidebarActiveItem('Create users')}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${sidebarActiveItem === 'Create users' ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
-                              }`}
-                          >
-                            • Create users
-                          </button>
-                          <button
-                            onClick={() => setSidebarActiveItem('Create Offices & Designation')}
-                            className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${sidebarActiveItem === 'Create Offices & Designation' ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
-                              }`}
-                          >
-                            • Create Offices & Designation
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                        {/* Sub-menu items */}
+                        {mappingMenuOpen && !sidebarCollapsed && (
+                          <div className="pl-4 space-y-1.5 pt-1">
+                            <button
+                              onClick={() => setSidebarActiveItem('Department Mapping')}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${sidebarActiveItem === 'Department Mapping' ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
+                                }`}
+                            >
+                              • Department Mapping
+                            </button>
+                            <button
+                              onClick={() => setSidebarActiveItem('Create Department Nodal')}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${sidebarActiveItem === 'Create Department Nodal' ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
+                                }`}
+                            >
+                              • Create Department Nodal
+                            </button>
+                            <button
+                              onClick={() => setSidebarActiveItem('Create users')}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${sidebarActiveItem === 'Create users' ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
+                                }`}
+                            >
+                              • Create users
+                            </button>
+                            <button
+                              onClick={() => setSidebarActiveItem('Create Offices & Designation')}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${sidebarActiveItem === 'Create Offices & Designation' ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
+                                }`}
+                            >
+                              • Create Offices & Designation
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Analytical Dashboard Button */}
                     <button
@@ -2270,7 +2438,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                {sidebarActiveItem === 'Department Mapping' ? 'Department Mapping' : sidebarActiveItem === 'Create Department Nodal' ? 'Create Department Nodal' : sidebarActiveItem === 'Create users' ? 'Create Users' : sidebarActiveItem === 'Create Offices & Designation' ? 'Create Offices & Designation' : 'Home'}
+                {sidebarActiveItem === 'Department Mapping' ? 'Department Mapping' : sidebarActiveItem === 'Create Department Nodal' ? 'Create Department Nodal' : sidebarActiveItem === 'Create RMC Users' ? 'Create RMC Users' : sidebarActiveItem === 'Create DealingHand Users' ? 'Create Users' : sidebarActiveItem === 'Create users' ? 'Create Users' : sidebarActiveItem === 'Create Offices & Designation' ? 'Create Offices & Designation' : (isDealingHand ? 'Home' : isRaabitaHead ? 'Home' : isDM ? 'DM Dashboard' : 'Home')}
               </h2>
               <span className="text-slate-400 font-medium">|</span>
               <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
@@ -2278,13 +2446,17 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                   ? 'Department Mapping'
                   : sidebarActiveItem === 'Create Department Nodal'
                     ? 'Create Department Nodal'
-                    : sidebarActiveItem === 'Create users'
-                      ? 'Create Users'
-                      : sidebarActiveItem === 'Create Offices & Designation'
-                        ? 'Create Offices & Designation'
-                        : sidebarActiveItem === 'Appeal Dashboard'
-                          ? `Appeal Dashboard (${user?.department || 'null'})`
-                          : 'Super Admin Dashboard'}
+                    : sidebarActiveItem === 'Create RMC Users'
+                      ? 'Create RMC Users'
+                      : sidebarActiveItem === 'Create DealingHand Users'
+                        ? 'Create Users'
+                        : sidebarActiveItem === 'Create users'
+                          ? 'Create Users'
+                          : sidebarActiveItem === 'Create Offices & Designation'
+                            ? 'Create Offices & Designation'
+                            : sidebarActiveItem === 'Appeal Dashboard'
+                              ? `Appeal Dashboard (${user?.department || 'null'})`
+                              : (isDealingHand ? 'DealingHand Head Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : isMonitoringCell ? 'Monitoring Cell Dashboard' : 'Super Admin Dashboard')}
               </span>
             </div>
 
@@ -2300,10 +2472,10 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                   <span>Configure Category Mapping</span>
                 </button>
               )}
-              {sidebarActiveItem === 'Super Admin Dashboard' && (
+              {(sidebarActiveItem === 'Super Admin Dashboard' || sidebarActiveItem === 'DM Dashboard' || sidebarActiveItem === 'RMC Head Dashboard' || sidebarActiveItem === 'DealingHand Dashboard') && (
                 <>
                   <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-                    {['Home', 'JK-IGRAMS', 'CPGRAMS', 'HLG Mulaqaat'].map((tab) => (
+                    {(isDM || isRaabitaHead || isDealingHand ? ['Home'] : ['Home', 'JK-IGRAMS', 'CPGRAMS', 'HLG Mulaqaat']).map((tab) => (
                       <button
                         key={tab}
                         type="button"
@@ -2336,7 +2508,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
           </div>
 
           {/* Render Active View */}
-          {['Department User List', 'Dealing Hand Grievances', 'Age Analysis Report', 'Status Wise Report', 'Pendency Report', 'Age Wise Pendency Report', 'District Wise Report', 'Average Time Taken Report', 'Appellate Report', 'Announcement / Notification List', 'Tree Dashboard', 'Advance Query Builder', 'Feedback Analysis', 'New Feedback Analysis', 'Heatmap'].includes(sidebarActiveItem) ? (
+          {['Age Analysis Report', 'Age Wise Pendency Report', 'District Wise Report', 'Average Time Taken Report', 'Appellate Report', 'Announcement / Notification List', 'Advance Query Builder', 'Feedback Analysis', 'New Feedback Analysis', 'Heatmap'].includes(sidebarActiveItem) ? (
             /* ────────────────────────────────────────────────────────
                VIEW: REPORT / DASHBOARD PLACEHOLDER
                ──────────────────────────────────────────────────────── */
@@ -2355,16 +2527,26 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 </div>
               </div>
             </div>
+          ) : sidebarActiveItem === 'Pendency Report' ? (
+            <PendencyReport />
+          ) : sidebarActiveItem === 'Tree Dashboard' ? (
+            <TreeDashboard />
+          ) : sidebarActiveItem === 'Status Wise Report' ? (
+            <StatusWiseReport />
+          ) : sidebarActiveItem === 'Department User List' ? (
+            <DepartmentUserListReport />
           ) : sidebarActiveItem === 'Citizen Registration List' ? (
             <CitizenRegistrationReport />
-          ) : sidebarActiveItem === 'Create Department Nodal' ? (
+          ) : sidebarActiveItem === 'Dealing Hand Grievances' ? (
+            <DealingHandGrievancesReport />
+          ) : (sidebarActiveItem === 'Create Department Nodal' || sidebarActiveItem === 'Create RMC Users') ? (
             /* ────────────────────────────────────────────────────────
-               VIEW: CREATE DEPARTMENT NODAL SCREEN (FULL SCREEN)
+               VIEW: CREATE DEPARTMENT NODAL / RMC USERS SCREEN
                ──────────────────────────────────────────────────────── */
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 text-xs animate-fadeIn text-left">
               <h3 className="font-extrabold text-slate-900 dark:text-white text-sm border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-600" />
-                <span>Create Department Nodal</span>
+                <span>{sidebarActiveItem === 'Create RMC Users' ? 'Create RMC Users' : 'Create Department Nodal'}</span>
               </h3>
 
               <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl">
@@ -2636,138 +2818,233 @@ export default function SuperAdminDashboard({ user, onLogout }) {
             </div>
           ) : sidebarActiveItem === 'Create users' ? (
             /* ────────────────────────────────────────────────────────
-               VIEW: CREATE USERS SCREEN (MATCHING USER REFERENCE SCREENSHOT)
+               VIEW: CREATE USERS SCREEN (EXACT MATCH FOR USER REFERENCE SCREENSHOT)
                ──────────────────────────────────────────────────────── */
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 text-xs animate-fadeIn text-left">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-sm border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-600" />
-                <span>Create Users</span>
-              </h3>
-
-              <form onSubmit={handleCreateUserSubmit} className="space-y-4">
+            <div className="space-y-6 text-xs animate-fadeIn text-left">
+              
+              {/* Card 1: Create Users */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                <h3 className="font-extrabold text-indigo-600 dark:text-indigo-400 text-sm pb-1">
+                  Create Users
+                </h3>
                 <div>
-                  <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1.5 font-semibold text-[11px] uppercase tracking-wider">User Type *</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">User Type</label>
                   <select
                     value={createUserForm.userType}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, userType: e.target.value })}
+                    onChange={(e) => {
+                      const selectedType = e.target.value;
+                      const isRMC = selectedType === 'RMC Head' || selectedType === 'Raabita Head';
+                      const isDHHead = selectedType === 'Dealing Hand Head';
+                      const isNoDistrict = isRMC || isDHHead;
+                      setCreateUserForm({
+                        ...createUserForm,
+                        userType: selectedType,
+                        division: isRMC ? 'UT' : createUserForm.division,
+                        district: isNoDistrict ? (isRMC ? 'UT' : (createUserForm.division || 'UT')) : createUserForm.district
+                      });
+                    }}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-bold text-slate-800 dark:text-slate-200 text-xs"
                   >
-                    <option value="">--Select--</option>
+                    <option value="RMC Head">RMC Head</option>
+                    <option value="Raabita Head">Raabita Head</option>
+                    <option value="DM">DM</option>
                     <option value="Executive Administrator">Executive Administrator</option>
                     <option value="Dealing Hand Head">Dealing Hand Head</option>
                     <option value="FMC Head">FMC Head</option>
-                    <option value="DM">DM</option>
-                    <option value="Raabita Head">Raabita Head</option>
                     <option value="Monitoring Cell">Monitoring Cell</option>
                   </select>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1.5 font-semibold text-[11px] uppercase tracking-wider">First name</label>
-                    <input
-                      type="text"
-                      placeholder="First name"
-                      value={createUserForm.firstName}
-                      onChange={(e) => setCreateUserForm({ ...createUserForm, firstName: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-semibold text-slate-850 dark:text-slate-100"
-                    />
-                  </div>
+              {/* Card 2: User Mapping - Create User */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+                <h3 className="font-extrabold text-indigo-600 dark:text-indigo-400 text-sm pb-1 border-b border-slate-100 dark:border-slate-800">
+                  User Mapping - Create User
+                </h3>
 
-                  <div>
-                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1.5 font-semibold text-[11px] uppercase tracking-wider">Middle name</label>
-                    <input
-                      type="text"
-                      placeholder="Middle name"
-                      value={createUserForm.middleName}
-                      onChange={(e) => setCreateUserForm({ ...createUserForm, middleName: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-semibold text-slate-850 dark:text-slate-100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1.5 font-semibold text-[11px] uppercase tracking-wider">Last name *</label>
-                    <input
-                      type="text"
-                      placeholder="Last name"
-                      value={createUserForm.lastName}
-                      onChange={(e) => setCreateUserForm({ ...createUserForm, lastName: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-semibold text-slate-850 dark:text-slate-100"
-                    />
-                  </div>
+                {/* Red Bullet Instructions */}
+                <div className="space-y-1 text-red-600 dark:text-red-400 font-semibold text-xs leading-relaxed">
+                  <p>• Except middle name all fields are mandatory.</p>
+                  <p>• Password should be minimum of 8 characters contain uppercase letter,lowercase letter,digits and special characters between @$!%*?&.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1.5 font-semibold text-[11px] uppercase tracking-wider">Mobile *</label>
-                    <input
-                      type="text"
-                      placeholder="Mobile"
-                      maxLength="10"
-                      value={createUserForm.mobile}
-                      onChange={(e) => setCreateUserForm({ ...createUserForm, mobile: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-semibold text-slate-850 dark:text-slate-100"
-                    />
+                <form onSubmit={handleCreateUserSubmit} className="space-y-5">
+                  {/* Grid Row 1 */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">First name*</label>
+                      <input
+                        type="text"
+                        placeholder="First name"
+                        value={createUserForm.firstName}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, firstName: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-850 dark:text-slate-100 font-semibold text-xs focus:border-indigo-600"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">Middle name</label>
+                      <input
+                        type="text"
+                        placeholder="Middle name"
+                        value={createUserForm.middleName}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, middleName: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-850 dark:text-slate-100 font-semibold text-xs focus:border-indigo-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">Last name*</label>
+                      <input
+                        type="text"
+                        placeholder="Last name"
+                        value={createUserForm.lastName}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, lastName: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-850 dark:text-slate-100 font-semibold text-xs focus:border-indigo-600"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1.5 font-semibold text-[11px] uppercase tracking-wider">Email *</label>
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={createUserForm.email}
-                      onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-semibold text-slate-850 dark:text-slate-100"
-                    />
+                  {/* Grid Row 2 */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div>
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">Mobile*</label>
+                      <input
+                        type="text"
+                        placeholder="Mobile"
+                        maxLength="10"
+                        value={createUserForm.mobile}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, mobile: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-850 dark:text-slate-100 font-semibold text-xs focus:border-indigo-600"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">Email*</label>
+                      <input
+                        type="email"
+                        placeholder="Email"
+                        value={createUserForm.email}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-850 dark:text-slate-100 font-semibold text-xs focus:border-indigo-600"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">Designation*</label>
+                      <input
+                        type="text"
+                        placeholder="Designation"
+                        value={createUserForm.designation}
+                        onChange={(e) => setCreateUserForm({ ...createUserForm, designation: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-850 dark:text-slate-100 font-semibold text-xs focus:border-indigo-600"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1.5 font-semibold text-[11px] uppercase tracking-wider">Designation *</label>
-                    <input
-                      type="text"
-                      placeholder="Designation"
-                      value={createUserForm.designation}
-                      onChange={(e) => setCreateUserForm({ ...createUserForm, designation: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-semibold text-slate-850 dark:text-slate-100"
-                    />
+                  {/* Grid Row 3: Password, Division, District */}
+                  {(() => {
+                    const isRmcUser = createUserForm.userType === 'RMC Head' || createUserForm.userType === 'Raabita Head';
+                    const isDHHead = createUserForm.userType === 'Dealing Hand Head';
+                    const isNoDistrictUser = isRmcUser || isDHHead;
+
+                    return (
+                      <div className={`grid grid-cols-1 ${isNoDistrictUser ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-5`}>
+                        <div>
+                          <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">Password*</label>
+                          <input
+                            type="password"
+                            placeholder="Password"
+                            value={createUserForm.password}
+                            onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+                            className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-850 dark:text-slate-100 font-semibold text-xs focus:border-indigo-600"
+                            required
+                          />
+                          <span className="block text-[10px] text-red-500 mt-1 font-semibold leading-tight">
+                            Password should be minimum of 8 characters contain uppercase letter,lowercase letter,digits and special characters between @$!%*?&.
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">Division*</label>
+                          <select
+                            value={isRmcUser ? 'UT' : (createUserForm.division || '')}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setCreateUserForm({
+                                ...createUserForm,
+                                division: val,
+                                district: isNoDistrictUser ? (val || 'UT') : (val === 'UT' ? 'UT' : '')
+                              });
+                            }}
+                            className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-800 dark:text-slate-200 font-semibold text-xs focus:border-indigo-600"
+                            required
+                          >
+                            {isRmcUser ? (
+                              <option value="UT">UT</option>
+                            ) : (
+                              <>
+                                <option value="">--Select Division--</option>
+                                <option value="JAMMU">JAMMU</option>
+                                <option value="KASHMIR">KASHMIR</option>
+                                <option value="UT">UT</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+
+                        {!isNoDistrictUser && (
+                          <div>
+                            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">
+                              District*
+                            </label>
+                            <select
+                              value={createUserForm.district || ''}
+                              onChange={(e) => setCreateUserForm({ ...createUserForm, district: e.target.value })}
+                              className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-800 dark:text-slate-200 font-semibold text-xs focus:border-indigo-600"
+                              required
+                            >
+                              <option value="">--Select District--</option>
+                              {createUserForm.division === 'UT' && <option value="UT">UT Level</option>}
+                              {createUserForm.division === 'JAMMU' && (
+                                ['Jammu', 'Samba', 'Kathua', 'Udhampur', 'Reasi', 'Ramban', 'Doda', 'Kishtwar', 'Rajouri', 'Poonch'].map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))
+                              )}
+                              {createUserForm.division === 'KASHMIR' && (
+                                ['Srinagar', 'Anantnag', 'Kulgam', 'Pulwama', 'Shopian', 'Budgam', 'Ganderbal', 'Bandipora', 'Baramulla', 'Kupwara'].map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))
+                              )}
+                              {!createUserForm.division && (
+                                ['UT', 'Srinagar', 'Jammu', 'Anantnag', 'Baramulla', 'Budgam', 'Doda', 'Ganderbal', 'Kathua', 'Kishtwar', 'Kulgam', 'Kupwara', 'Poonch', 'Pulwama', 'Rajouri', 'Ramban', 'Reasi', 'Samba', 'Shopian', 'Udhampur'].map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))
+                              )}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Centered Create Button */}
+                  <div className="pt-4 flex justify-center">
+                    <button
+                      type="submit"
+                      className="px-10 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-lg shadow-sm border-0 cursor-pointer text-xs uppercase tracking-wider transition-colors"
+                    >
+                      Create
+                    </button>
                   </div>
-                </div>
+                </form>
+              </div>
 
-                <div>
-                  <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1.5 font-semibold text-[11px] uppercase tracking-wider">Office Name *</label>
-                  <input
-                    type="text"
-                    placeholder="Office Name"
-                    value={createUserForm.officeName}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, officeName: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-semibold text-slate-850 dark:text-slate-100"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-600 dark:text-slate-400 mb-1.5 font-semibold text-[11px] uppercase tracking-wider">Password *</label>
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={createUserForm.password}
-                    onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-semibold text-slate-850 dark:text-slate-100"
-                  />
-                  <span className="block text-[10px] text-red-500 mt-1 font-semibold leading-relaxed">
-                    Password should be minimum of 8 characters contain uppercase letter/lowercase letter, digits and special characters between @$!%*?&.
-                  </span>
-                </div>
-
-                <div className="pt-4 flex justify-center">
-                  <button
-                    type="submit"
-                    className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-lg shadow-sm border-0 cursor-pointer text-xs uppercase tracking-wider"
-                  >
-                    Create
-                  </button>
-                </div>
-              </form>
             </div>
           ) : sidebarActiveItem === 'Create Offices & Designation' ? (
             /* ────────────────────────────────────────────────────────
@@ -4834,27 +5111,31 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                   <Presentation className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
                 </div>
 
-                {/* 7. CPGRAMS */}
-                <div className="bg-[#f94144] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                  <div className="space-y-2 relative z-10">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-red-100">CPGRAMS</span>
-                    <span className="block text-2xl font-black font-mono">Total {stats.totalCPGRAM}</span>
-                    <span className="block text-[10px] font-semibold text-red-200">Forwarded {stats.fwdToCPGRAM} Closed {stats.cpgramClosed}</span>
+                {/* 7. CPGRAMS (Super Admin only) */}
+                {isSuperAdmin && (
+                  <div className="bg-[#f94144] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
+                    <div className="space-y-2 relative z-10">
+                      <span className="block text-[11px] font-bold uppercase tracking-wider text-red-100">CPGRAMS</span>
+                      <span className="block text-2xl font-black font-mono">Total {stats.totalCPGRAM}</span>
+                      <span className="block text-[10px] font-semibold text-red-200">Forwarded {stats.fwdToCPGRAM} Closed {stats.cpgramClosed}</span>
+                    </div>
+                    <Copy className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
                   </div>
-                  <Copy className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
-                </div>
+                )}
 
-                {/* 8. Escalation Figures */}
-                <div className="bg-[#43aa8b] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                  <div className="space-y-2 relative z-10">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-teal-100">Escalation Figures</span>
-                    <span className="block text-2xl font-black font-mono">Total {stats.priorityFlagCount}</span>
-                    <span className="block text-[10px] font-semibold text-teal-200">
-                      Beyond 7 Days {Math.floor(Number(stats.priorityFlagCount) / 2)} Beyond 28 Days {Number(stats.priorityFlagCount) - Math.floor(Number(stats.priorityFlagCount) / 2)}
-                    </span>
+                {/* 8. Escalation Figures (Super Admin only) */}
+                {isSuperAdmin && (
+                  <div className="bg-[#43aa8b] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
+                    <div className="space-y-2 relative z-10">
+                      <span className="block text-[11px] font-bold uppercase tracking-wider text-teal-100">Escalation Figures</span>
+                      <span className="block text-2xl font-black font-mono">Total {stats.priorityFlagCount}</span>
+                      <span className="block text-[10px] font-semibold text-teal-200">
+                        Beyond 7 Days {Math.floor(Number(stats.priorityFlagCount) / 2)} Beyond 28 Days {Number(stats.priorityFlagCount) - Math.floor(Number(stats.priorityFlagCount) / 2)}
+                      </span>
+                    </div>
+                    <Flag className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
                   </div>
-                  <Flag className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
-                </div>
+                )}
               </div>
 
 
@@ -4864,7 +5145,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <h3 className="font-extrabold text-slate-900 dark:text-white text-sm uppercase tracking-wider flex items-center gap-2">
                     <ClipboardList className="w-4 h-4 text-blue-600" />
-                    <span>Total Applications Table</span>
+                    <span>{isDealingHand ? 'Total Grievances' : isRaabitaHead ? 'Total Grievances' : isDM ? 'List of Grievances' : 'Total Applications Table'}</span>
                   </h3>
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -4934,57 +5215,146 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-blue-600 dark:bg-blue-800 text-white border-b border-slate-200 dark:border-slate-800 text-[9px] font-extrabold select-none uppercase">
-                        <th className="p-3 text-center">Action</th>
-                        <th
-                          onClick={() => handleSort('id')}
-                          className="p-3 text-center cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors"
-                        >
-                          S. No. {sortColumn === 'id' ? (sortDirection === 'ASC' ? '▲' : '▼') : '↕'}
-                        </th>
-                        <th
-                          onClick={() => handleSort('grievanceId')}
-                          className="p-3 cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors"
-                        >
-                          Grievance ID {sortColumn === 'grievanceId' ? (sortDirection === 'ASC' ? '▲' : '▼') : '↕'}
-                        </th>
-                        <th className="p-3">Mode</th>
-                        <th className="p-3">Privilege Assigned</th>
-                        <th className="p-3">Mobile Number</th>
-                        <th className="p-3">Date of Last Action</th>
-                        <th className="p-3">Department</th>
-                        <th className="p-3">Category</th>
-                        <th className="p-3">Sub Category</th>
-                        <th className="p-3">Sub Category Level 2</th>
-                        <th className="p-3">Sub Category Level 3</th>
-                        <th className="p-3">Sub Category Level 4</th>
-                        <th className="p-3">Submitted By</th>
-                        <th className="p-3">Received From</th>
-                        <th
-                          onClick={() => handleSort('createdAt')}
-                          className="p-3 cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors"
-                        >
-                          Date {sortColumn === 'createdAt' ? (sortDirection === 'ASC' ? '▲' : '▼') : '↕'}
-                        </th>
-                        <th
-                          onClick={() => handleSort('status')}
-                          className="p-3 cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors"
-                        >
-                          Status {sortColumn === 'status' ? (sortDirection === 'ASC' ? '▲' : '▼') : '↕'}
-                        </th>
-                        <th className="p-3 text-center">AI Classification</th>
-                        <th className="p-3 text-center">AI Tracking</th>
-                      </tr>
+                      {isRaabitaHead || isDealingHand ? (
+                        <tr className="bg-blue-600 text-white font-extrabold uppercase tracking-wider text-[10px] border-b border-blue-700">
+                          <th className="p-3 text-center">S. No.</th>
+                          <th className="p-3">Grievance ID</th>
+                          <th className="p-3">Main Category</th>
+                          <th className="p-3">Sub Category</th>
+                          <th className="p-3">Citizen Name</th>
+                          <th className="p-3">Citizen Mobile No.</th>
+                          <th className="p-3">Uploaded By</th>
+                          <th className="p-3">Received From</th>
+                          <th className="p-3">Submitted On</th>
+                          <th className="p-3">Classification</th>
+                          <th className="p-3">Mode Of Complaint</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3 text-center">Action</th>
+                        </tr>
+                      ) : isDM ? (
+                        <tr className="bg-blue-600 text-white font-extrabold uppercase tracking-wider text-[10px] border-b border-blue-700">
+                          <th className="p-3 text-center">S. No.</th>
+                          <th className="p-3">Grievance ID</th>
+                          <th className="p-3">Category</th>
+                          <th className="p-3">Submitted Date</th>
+                          <th className="p-3">Department</th>
+                          <th className="p-3">Origin</th>
+                          <th className="p-3">District Status</th>
+                          <th className="p-3">Administrative Status</th>
+                          <th className="p-3 text-center">Action</th>
+                        </tr>
+                      ) : (
+                        <tr className="bg-blue-600 dark:bg-blue-800 text-white border-b border-slate-200 dark:border-slate-800 text-[9px] font-extrabold select-none uppercase">
+                          <th className="p-3 text-center">Action</th>
+                          <th
+                            onClick={() => handleSort('id')}
+                            className="p-3 text-center cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors"
+                          >
+                            S. No. {sortColumn === 'id' ? (sortDirection === 'ASC' ? '▲' : '▼') : '↕'}
+                          </th>
+                          <th
+                            onClick={() => handleSort('grievanceId')}
+                            className="p-3 cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors"
+                          >
+                            Grievance ID {sortColumn === 'grievanceId' ? (sortDirection === 'ASC' ? '▲' : '▼') : '↕'}
+                          </th>
+                          <th className="p-3">Mode</th>
+                          <th className="p-3">Privilege Assigned</th>
+                          <th className="p-3">Mobile Number</th>
+                          <th className="p-3">Date of Last Action</th>
+                          <th className="p-3">Department</th>
+                          <th className="p-3">Category</th>
+                          <th className="p-3">Sub Category</th>
+                          <th className="p-3">Sub Category Level 2</th>
+                          <th className="p-3">Sub Category Level 3</th>
+                          <th className="p-3">Sub Category Level 4</th>
+                          <th className="p-3">Submitted By</th>
+                          <th className="p-3">Received From</th>
+                          <th
+                            onClick={() => handleSort('createdAt')}
+                            className="p-3 cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors"
+                          >
+                            Date {sortColumn === 'createdAt' ? (sortDirection === 'ASC' ? '▲' : '▼') : '↕'}
+                          </th>
+                          <th
+                            onClick={() => handleSort('status')}
+                            className="p-3 cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors"
+                          >
+                            Status {sortColumn === 'status' ? (sortDirection === 'ASC' ? '▲' : '▼') : '↕'}
+                          </th>
+                          <th className="p-3 text-center">AI Classification</th>
+                          <th className="p-3 text-center">AI Tracking</th>
+                        </tr>
+                      )}
                     </thead>
                     <tbody>
                       {isLoading ? (
                         <tr>
-                          <td colSpan={19} className="text-center py-10 text-slate-400 font-bold">Loading redressal queue...</td>
+                          <td colSpan={isRaabitaHead || isDealingHand ? 13 : isDM ? 9 : 19} className="text-center py-10 text-slate-400 font-bold">Loading redressal queue...</td>
                         </tr>
-                      ) : filteredGrievances.length === 0 ? (
+                      ) : grievances.length === 0 ? (
                         <tr>
-                          <td colSpan={19} className="text-center py-10 text-slate-400">No grievances listed.</td>
+                          <td colSpan={isRaabitaHead || isDealingHand ? 13 : isDM ? 9 : 19} className="text-center py-10 text-slate-400">No data available in table</td>
                         </tr>
+                      ) : isRaabitaHead || isDealingHand ? (
+                        grievances.map((g, idx) => (
+                          <tr key={g.id || idx} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-350">
+                            <td className="p-3 text-center font-bold text-slate-600 dark:text-slate-400">{(currentPage - 1) * entriesPerPage + idx + 1}</td>
+                            <td className="p-3 font-bold font-mono text-blue-600 dark:text-blue-400 min-w-[140px]">
+                              <Link to={`/superadmin/grievance-details/${g.id}`} className="hover:underline text-blue-600 dark:text-blue-400">
+                                {g.grievanceId}
+                              </Link>
+                            </td>
+                            <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">{g.category || 'N/A'}</td>
+                            <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">{g.subCatL1 || g.subCategory || 'N/A'}</td>
+                            <td className="p-3 font-medium text-slate-800 dark:text-slate-200">{g.submittedBy || 'N/A'}</td>
+                            <td className="p-3 font-mono text-slate-600 dark:text-slate-400">{g.mobileNumber || 'N/A'}</td>
+                            <td className="p-3 text-slate-600 dark:text-slate-400">{g.uploadedBy || g.submittedBy || 'Citizen'}</td>
+                            <td className="p-3 text-slate-600 dark:text-slate-400">{g.receivedFrom || g.origin || 'Online'}</td>
+                            <td className="p-3 font-mono text-slate-500 text-[10px]">{g.date || g.lastActionDate || 'N/A'}</td>
+                            <td className="p-3 text-slate-600 dark:text-slate-400">{g.keyFlag || 'Normal'}</td>
+                            <td className="p-3 text-slate-600 dark:text-slate-400">{g.mode || g.origin || 'Web'}</td>
+                            <td className="p-3">
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                (g.status || '').toLowerCase() === 'resolved' ? 'bg-emerald-100 text-emerald-700' :
+                                (g.status || '').toLowerCase() === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                                (g.status || '').toLowerCase() === 'appealed' ? 'bg-orange-100 text-orange-700' :
+                                'bg-amber-100 text-amber-700'
+                              }`}>
+                                {g.status || 'Pending'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <Link
+                                to={`/superadmin/grievance-details/${g.id}`}
+                                className="inline-block px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[11px] transition-colors shadow-xs no-underline"
+                              >
+                                View details
+                              </Link>
+                            </td>
+                          </tr>
+                        ))
+                      ) : isDM ? (
+                        grievances.map((g, idx) => (
+                          <tr key={g.id || idx} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-350">
+                            <td className="p-3 text-center font-bold text-slate-600 dark:text-slate-400">{(currentPage - 1) * entriesPerPage + idx + 1}</td>
+                            <td className="p-3 font-bold font-mono text-blue-600 dark:text-blue-400 min-w-[140px]">{g.grievanceId}</td>
+                            <td className="p-3 font-semibold text-slate-700 dark:text-slate-300 max-w-[200px] truncate">{g.category}</td>
+                            <td className="p-3 font-mono text-slate-500 text-[10px]">{g.date || g.lastActionDate}</td>
+                            <td className="p-3 font-semibold text-slate-700 dark:text-slate-300 max-w-[180px] truncate">{g.department}</td>
+                            <td className="p-3 text-slate-500 font-medium">{g.mode || 'Web'}</td>
+                            <td className="p-3 font-bold text-slate-700 dark:text-slate-300">{g.status || 'Resolved'}</td>
+                            <td className="p-3 font-bold text-slate-700 dark:text-slate-300">{g.status === 'Resolved' ? 'Resolved' : 'Forwarded'}</td>
+                            <td className="p-3 text-center">
+                              <Link
+                                to={`/superadmin/grievance-details/${g.id}`}
+                                className="inline-block px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[11px] transition-colors shadow-xs no-underline"
+                              >
+                                Grievance details
+                              </Link>
+                            </td>
+                          </tr>
+                        ))
                       ) : (
                         grievances.map((g, idx) => (
                           <tr key={g.id || idx} className="border-b border-slate-150 dark:border-slate-855 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors text-slate-700 dark:text-slate-350">
