@@ -15,9 +15,10 @@ const checkRoleMatch = (user, allowedRoles) => {
   // Direct role check
   if (formattedAllowed.includes(role)) return true;
   if (formattedAllowed.includes(`ROLE_${role}`)) return true;
+  if (formattedAllowed.includes(role.replace(/^ROLE_/, ''))) return true;
 
   // Keyword / specialized checks
-  if (formattedAllowed.includes('ROLE_SUPERADMIN') || formattedAllowed.includes('SUPERADMIN') || formattedAllowed.includes('ROLE_RAABITA_HEAD') || formattedAllowed.includes('ROLE_RMC_HEAD') || formattedAllowed.includes('ROLE_DEALINGHAND') || formattedAllowed.includes('DEALINGHAND')) {
+  if (formattedAllowed.includes('ROLE_SUPERADMIN') || formattedAllowed.includes('SUPERADMIN') || formattedAllowed.includes('ROLE_RAABITA_HEAD') || formattedAllowed.includes('ROLE_RMC_HEAD') || formattedAllowed.includes('ROLE_RMC_USER') || formattedAllowed.includes('RMC') || formattedAllowed.includes('ROLE_DEALINGHAND') || formattedAllowed.includes('DEALINGHAND')) {
     if (role === 'ROLE_SUPERADMIN' || role === 'SUPERADMIN' || email.includes('superadmin') || username.includes('superadmin') || role === 'SECRETARY' || role === 'ROLE_SECRETARY' || role === 'ROLE_RAABITA_HEAD' || role === 'RAABITA_HEAD' || role === 'ROLE_RMC_HEAD' || role === 'RMC_HEAD' || role === 'RAABITAHEAD' || role === 'RMCHEAD' || role.includes('RAABITA') || role.includes('RMC') || email.includes('raabita') || username.includes('raabita') || username.includes('rmc') || role.includes('DEALING') || email.includes('dealing') || username.includes('dealing')) {
       return true;
     }
@@ -59,8 +60,20 @@ const checkRoleMatch = (user, allowedRoles) => {
     }
   }
 
-  if (formattedAllowed.includes('ROLE_CITIZEN') || formattedAllowed.includes('CITIZEN')) {
-    if (role === 'CITIZEN' || role === 'ROLE_CITIZEN' || !role) {
+  if (formattedAllowed.includes('ROLE_CITIZEN') || formattedAllowed.includes('CITIZEN') || formattedAllowed.includes('USER') || formattedAllowed.includes('ROLE_USER') || formattedAllowed.includes('CITIZEN_USER')) {
+    if (
+      role === 'CITIZEN' || 
+      role === 'ROLE_CITIZEN' || 
+      role === 'USER' || 
+      role === 'ROLE_USER' || 
+      role === 'CITIZEN_USER' || 
+      role === 'ROLE_CITIZEN_USER' || 
+      role === 'PUBLIC' || 
+      role === 'ROLE_PUBLIC' || 
+      !role || 
+      role.includes('CITIZEN') ||
+      role.includes('USER')
+    ) {
       return true;
     }
   }

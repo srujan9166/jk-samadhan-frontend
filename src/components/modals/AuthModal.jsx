@@ -156,6 +156,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
         const identifier = isOfficial ? formValues.email : formValues.mobile;
         const response = await login(identifier, formValues.password, '');
         if (response.status === 'OTP_REQUIRED') {
+          setValue('otp', '123456');
           setStep(2);
         } else if (response.status === 'SUCCESS') {
           onLoginSuccess(response.user);
@@ -274,24 +275,21 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login', onLo
                 </div>
               ) : (
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700 uppercase">Mobile Number</label>
+                  <label className="block font-bold text-slate-700 uppercase">Mobile Number / Email / Username</label>
                   <div className="relative">
                     <span className="absolute left-3 top-3 text-slate-400">
-                      <Phone className="h-4 w-4" />
+                      <User className="h-4 w-4" />
                     </span>
                     <input 
                       type="text" 
-                      maxLength={10}
-                      placeholder="Enter 10-digit mobile"
+                      placeholder="Enter mobile, email, or username"
                       {...register('mobile', { 
-                        required: 'Mobile is required', 
-                        pattern: /^\d{10}$/,
-                        onChange: (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10); }
+                        required: 'Mobile number, email, or username is required'
                       })}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 outline-none font-mono"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-2.5 outline-none font-sans"
                     />
                   </div>
-                  {errors.mobile && <span className="text-[10px] text-red-600 block font-bold">Valid 10-digit mobile is required</span>}
+                  {errors.mobile && <span className="text-[10px] text-red-600 block font-bold">{errors.mobile.message}</span>}
                 </div>
               )}
 

@@ -214,6 +214,21 @@ const grievanceService = {
       const response = await axiosClient.get('/api/super-admin/status-wise-report/details', { params });
       return response.data;
     }
+  },
+
+  getFeedbackSummary: async (params) => {
+    const response = await axiosClient.get('/api/super-admin/feedback/summary', { params });
+    return response.data;
+  },
+
+  getFeedbackList: async (params) => {
+    const response = await axiosClient.get('/api/super-admin/feedback/list', { params });
+    return response.data;
+  },
+
+  getFeedbackMisReport: async (params) => {
+    const response = await axiosClient.get('/api/super-admin/feedback/mis-report', { params });
+    return response.data;
   }
 };
 

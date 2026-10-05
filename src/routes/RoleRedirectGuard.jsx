@@ -9,6 +9,11 @@ export const ROLE_REDIRECT_MAP = {
   RAABITA_HEAD: '/super-admin',
   ROLE_RMC_HEAD: '/super-admin',
   RMC_HEAD: '/super-admin',
+  ROLE_RMC_USER: '/super-admin',
+  RMC_USER: '/super-admin',
+  ROLE_RMC: '/super-admin',
+  RMC: '/super-admin',
+  RAABITA: '/super-admin',
   ROLE_DEALINGHAND: '/super-admin',
   DEALINGHAND: '/super-admin',
   DEALING_HAND: '/super-admin',
@@ -34,7 +39,24 @@ export const getRoleRedirectPath = (user) => {
   const email = (user.email || '').toLowerCase();
   const username = (user.username || '').toLowerCase();
 
-  // Role resolution hierarchy
+  // Explicit Citizen / Standard User check FIRST
+  if (
+    role === 'CITIZEN' || 
+    role === 'ROLE_CITIZEN' || 
+    role === 'USER' || 
+    role === 'ROLE_USER' || 
+    role === 'CITIZEN_USER' || 
+    role === 'ROLE_CITIZEN_USER' || 
+    role === 'PUBLIC' || 
+    role === 'ROLE_PUBLIC' || 
+    role.includes('CITIZEN') ||
+    role.includes('USER') ||
+    !role
+  ) {
+    return '/citizen';
+  }
+
+  // Role resolution hierarchy for official roles
   if (role === 'ROLE_SUPERADMIN' || role === 'SUPERADMIN' || email.includes('superadmin') || username.includes('superadmin') || role === 'SECRETARY' || role === 'ROLE_SECRETARY' || role === 'ROLE_RAABITA_HEAD' || role === 'RAABITA_HEAD' || role === 'ROLE_RMC_HEAD' || role === 'RMC_HEAD' || role === 'RAABITAHEAD' || role === 'RMCHEAD' || role.includes('RAABITA') || role.includes('RMC') || email.includes('raabita') || username.includes('raabita') || username.includes('rmc') || role.includes('DEALING') || email.includes('dealing') || username.includes('dealing')) {
     return '/super-admin';
   }
@@ -67,7 +89,7 @@ export function RoleRedirectGuard({ children }) {
 
   // Store last visited path in sessionStorage when navigating
   useEffect(() => {
-    if (isLoggedIn && user && location.pathname !== '/' && !['/login', '/register'].includes(location.pathname)) {
+    if (isLoggedIn && user && location.pathname !== '/' && !['/login', '/register', '/unauthorized'].includes(location.pathname)) {
       sessionStorage.setItem('samadhan_lastVisitedPath', location.pathname);
     }
   }, [location.pathname, isLoggedIn, user]);
@@ -76,7 +98,12 @@ export function RoleRedirectGuard({ children }) {
     if (isLoading) return;
 
     if (isLoggedIn && user && (location.pathname === '/' || location.pathname === '/login')) {
-      const lastPath = sessionStorage.getItem('samadhan_lastVisitedPath');
+      const storedLast = sessionStorage.getItem('samadhan_lastVisitedPath');
+      let lastPath = storedLast;
+      if (lastPath === '/unauthorized' || lastPath === '/login' || lastPath === '/') {
+        sessionStorage.removeItem('samadhan_lastVisitedPath');
+        lastPath = null;
+      }
       const defaultDashboard = getRoleRedirectPath(user);
       const redirectTo = (lastPath && lastPath !== '/') ? lastPath : defaultDashboard;
       navigate(redirectTo, { replace: true });

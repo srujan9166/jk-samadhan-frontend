@@ -45,6 +45,7 @@ import {
   MessageSquare,
   Flame,
   Map,
+  MapPin,
   Clock,
   UserCheck,
   Download,
@@ -65,6 +66,13 @@ import DepartmentUserListReport from './DepartmentUserListReport';
 import StatusWiseReport from './StatusWiseReport';
 import TreeDashboard from './TreeDashboard';
 import PendencyReport from './PendencyReport';
+import FeedbackAnalysis from './FeedbackAnalysis';
+import DistrictWiseReport from './DistrictWiseReport';
+import AverageTimeReport from './AverageTimeReport';
+import AppellateReport from './AppellateReport';
+import AnnouncementNotificationReport from './AnnouncementNotificationReport';
+import AdvanceQueryBuilder from './AdvanceQueryBuilder';
+import HeatmapReport from './HeatmapReport';
 import JkIgramsDashboardView from './JkIgramsDashboardView';
 import CreateAnnouncementModal from '../../components/modals/CreateAnnouncementModal';
 
@@ -83,10 +91,10 @@ export default function SuperAdminDashboard({ user, onLogout }) {
   const userUsername = (user?.username || '').toLowerCase();
 
   const isSuperAdmin = userRole === 'ROLE_SUPERADMIN' || userRole === 'SUPERADMIN' || userEmail.includes('superadmin') || userUsername.includes('superadmin') || userRole === 'SECRETARY' || userRole === 'ROLE_SECRETARY';
-  const isDM = userRole === 'DM' || userRole === 'ROLE_DM' || userRole === 'ROLE_DISTRICT_MAGISTRATE';
   const isMonitoringCell = userRole === 'ROLE_MONITORING_CELL' || userRole === 'MONITORING_CELL' || userEmail.includes('monitor') || userUsername.includes('monitor');
   const isRaabitaHead = userRole === 'ROLE_RAABITA_HEAD' || userRole === 'RAABITA_HEAD' || userRole === 'ROLE_RMC_HEAD' || userRole === 'RMC_HEAD' || userRole === 'RAABITAHEAD' || userRole === 'RMCHEAD' || userRole.includes('RAABITA') || userRole.includes('RMC') || userEmail.includes('raabita') || userUsername.includes('raabita') || userUsername.includes('rmc');
   const isDealingHand = userRole === 'DEALINGHAND' || userRole === 'ROLE_DEALINGHAND' || userRole === 'DEALING_HAND' || userRole === 'ROLE_DEALING_HAND' || userRole === 'DEALINGHANDHEAD' || userRole === 'DEALING_HAND_HEAD' || userRole === 'ROLE_DEALINGHAND_HEAD' || userRole.includes('DEALING') || userEmail.includes('dealing') || userUsername.includes('dealing');
+  const isDM = (userRole === 'DM' || userRole === 'ROLE_DM' || userRole === 'ROLE_DISTRICT_MAGISTRATE') && !isRaabitaHead && !isDealingHand;
 
   const [grievances, setGrievances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -214,9 +222,17 @@ export default function SuperAdminDashboard({ user, onLogout }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mappingMenuOpen, setMappingMenuOpen] = useState(true);
   const [misMenuOpen, setMisMenuOpen] = useState(true);
-  const [sidebarActiveItem, setSidebarActiveItem] = useState(
-    isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard'
-  );
+  const [sidebarActiveItem, setSidebarActiveItem] = useState(() => {
+    const saved = sessionStorage.getItem('activeSidebarItem');
+    if (saved) return saved;
+    return isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard';
+  });
+
+  useEffect(() => {
+    if (sidebarActiveItem) {
+      sessionStorage.setItem('activeSidebarItem', sidebarActiveItem);
+    }
+  }, [sidebarActiveItem]);
 
   // DM / Raabita Head / DealingHand Role Safety Guard: prevent restricted views
   useEffect(() => {
@@ -460,14 +476,6 @@ export default function SuperAdminDashboard({ user, onLogout }) {
       };
 
       let res = await grievanceService.getSuperAdminGrievances(params);
-      if ((!res || !res.content || res.content.length === 0) && isDM && targetDistrict) {
-        // Fallback: fetch general grievances if specific district query yielded no results
-        const fallbackParams = { ...params, district: '' };
-        const fallbackRes = await grievanceService.getSuperAdminGrievances(fallbackParams);
-        if (fallbackRes && fallbackRes.content) {
-          res = fallbackRes;
-        }
-      }
 
       if (res && res.content) {
         const formatted = res.content.map((g, idx) => ({
@@ -1982,6 +1990,14 @@ export default function SuperAdminDashboard({ user, onLogout }) {
             <span className="text-xs font-extrabold text-[#1a365d] dark:text-slate-350">JK Raabita</span>
           </div>
 
+          {/* DM District Badge */}
+          {/* {isDM && (
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full text-xs font-black shadow-xs tracking-wide">
+              <MapPin className="w-3.5 h-3.5 text-yellow-300" />
+              <span>District: {user?.district || user?.districtName || 'Jammu'}</span>
+            </div>
+          )} */}
+
           {/* Menu Hamburger Toggle Button */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -2267,7 +2283,6 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                             { label: 'Age Analysis Report', name: 'Age Analysis Report', icon: Clock },
                             { label: 'Status Wise Report', name: 'Status Wise Report', icon: BarChart3 },
                             { label: 'Pendency Report', name: 'Pendency Report', icon: AlertTriangle },
-                            { label: 'Dependency Report', name: 'Age Wise Pendency Report', icon: AlertCircle },
                             { label: 'District Wise Report', name: 'District Wise Report', icon: Map },
                             { label: 'Average Time Taken Report', name: 'Average Time Taken Report', icon: Clock },
                             { label: 'Appellate Report', name: 'Appellate Report', icon: ShieldCheck },
@@ -2436,7 +2451,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
 
           {/* Breadcrumb Title & Announcement Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
                 {sidebarActiveItem === 'Department Mapping' ? 'Department Mapping' : sidebarActiveItem === 'Create Department Nodal' ? 'Create Department Nodal' : sidebarActiveItem === 'Create RMC Users' ? 'Create RMC Users' : sidebarActiveItem === 'Create DealingHand Users' ? 'Create Users' : sidebarActiveItem === 'Create users' ? 'Create Users' : sidebarActiveItem === 'Create Offices & Designation' ? 'Create Offices & Designation' : (isDealingHand ? 'Home' : isRaabitaHead ? 'Home' : isDM ? 'DM Dashboard' : 'Home')}
               </h2>
@@ -2456,8 +2471,14 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                             ? 'Create Offices & Designation'
                             : sidebarActiveItem === 'Appeal Dashboard'
                               ? `Appeal Dashboard (${user?.department || 'null'})`
-                              : (isDealingHand ? 'DealingHand Head Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : isMonitoringCell ? 'Monitoring Cell Dashboard' : 'Super Admin Dashboard')}
+                              : (isDealingHand ? 'DealingHand Head Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? `DM Dashboard` : isMonitoringCell ? 'Monitoring Cell Dashboard' : 'Super Admin Dashboard')}
               </span>
+              {isDM && (
+                <span className="ml-2 px-3 py-1 bg-blue-600 text-white font-extrabold rounded-lg text-xs tracking-wider shadow-xs uppercase flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>District: {user?.district || user?.districtName || 'Jammu'}</span>
+                </span>
+              )}
             </div>
 
             {/* Top Action Buttons */}
@@ -2508,7 +2529,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
           </div>
 
           {/* Render Active View */}
-          {['Age Analysis Report', 'Age Wise Pendency Report', 'District Wise Report', 'Average Time Taken Report', 'Appellate Report', 'Announcement / Notification List', 'Advance Query Builder', 'Feedback Analysis', 'New Feedback Analysis', 'Heatmap'].includes(sidebarActiveItem) ? (
+          {['Age Analysis Report', 'Age Wise Pendency Report'].includes(sidebarActiveItem) ? (
             /* ────────────────────────────────────────────────────────
                VIEW: REPORT / DASHBOARD PLACEHOLDER
                ──────────────────────────────────────────────────────── */
@@ -2527,6 +2548,20 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 </div>
               </div>
             </div>
+          ) : (sidebarActiveItem === 'Feedback Analysis' || sidebarActiveItem === 'New Feedback Analysis') ? (
+            <FeedbackAnalysis />
+          ) : sidebarActiveItem === 'District Wise Report' ? (
+            <DistrictWiseReport />
+          ) : sidebarActiveItem === 'Average Time Taken Report' ? (
+            <AverageTimeReport />
+          ) : (sidebarActiveItem === 'Appellate Report' || sidebarActiveItem === 'Appeal MIS Report' || sidebarActiveItem === 'Appeal Report') ? (
+            <AppellateReport />
+          ) : sidebarActiveItem === 'Announcement / Notification List' ? (
+            <AnnouncementNotificationReport />
+          ) : sidebarActiveItem === 'Advance Query Builder' ? (
+            <AdvanceQueryBuilder />
+          ) : sidebarActiveItem === 'Heatmap' ? (
+            <HeatmapReport />
           ) : sidebarActiveItem === 'Pendency Report' ? (
             <PendencyReport />
           ) : sidebarActiveItem === 'Tree Dashboard' ? (
@@ -5048,6 +5083,29 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                VIEW: SUPER ADMIN MAIN DASHBOARD HOME
                ──────────────────────────────────────────────────────── */
             <div className="space-y-6 animate-fadeIn">
+
+              {/* DM District Welcome Banner */}
+              {isDM && (
+                <div className="bg-gradient-to-r from-blue-800 via-indigo-800 to-purple-900 text-white p-4.5 rounded-2xl shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border border-blue-700/50">
+                  <div className="space-y-1 text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 bg-blue-500/30 border border-blue-400/40 rounded-full text-[10px] font-black uppercase tracking-widest text-blue-200">
+                        District Magistrate Portal
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+                      <span>District Magistrate Dashboard — {user?.district || user?.districtName || 'Jammu'}</span>
+                    </h3>
+                    <p className="text-xs text-blue-100 font-medium">
+                      Grievance Redressal & Pendency Monitoring Dashboard for District <strong>{user?.district || user?.districtName || 'Jammu'}</strong>
+                    </p>
+                  </div>
+                  <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-xl font-mono text-xs font-black border border-white/20 shadow-inner flex items-center gap-2 text-yellow-300 shrink-0">
+                    <MapPin className="w-4 h-4 text-yellow-300 animate-bounce" />
+                    <span className="text-sm tracking-wider uppercase">{user?.district || user?.districtName || 'Jammu'} DISTRICT</span>
+                  </div>
+                </div>
+              )}
 
               {/* Metric stats cards (8 columns/cards matching user reference) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

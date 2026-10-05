@@ -57,14 +57,10 @@ export default function AppRoutes({
       />
 
       {/* Super Admin, RMC Head & Dealing Hand Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['ROLE_SUPERADMIN', 'SUPERADMIN', 'SECRETARY', 'ROLE_RAABITA_HEAD', 'RAABITA_HEAD', 'ROLE_RMC_HEAD', 'RMC_HEAD', 'DEALINGHAND', 'ROLE_DEALINGHAND', 'DEALING_HAND', 'ROLE_DEALING_HAND']} />}>
+      <Route element={<ProtectedRoute allowedRoles={['ROLE_SUPERADMIN', 'SUPERADMIN', 'SECRETARY', 'ROLE_RAABITA_HEAD', 'RAABITA_HEAD', 'ROLE_RMC_HEAD', 'RMC_HEAD', 'DEALINGHAND', 'ROLE_DEALINGHAND', 'DEALING_HAND', 'ROLE_DEALING_HAND', 'DEALINGHANDHEAD', 'DEALING_HAND_HEAD', 'ROLE_DEALINGHAND_HEAD', 'ROLE_DM', 'DM', 'ROLE_DEPT_ADMIN', 'DEPT_ADMIN', 'OFFICER', 'DEPARTMENT']} />}>
         <Route 
           path="/super-admin" 
           element={<Dashboard {...commonDashboardProps} />} 
-        />
-        <Route 
-          path="/superadmin/grievance-details/:id" 
-          element={<SuperAdminGrievanceDetail />} 
         />
       </Route>
 
@@ -111,7 +107,7 @@ export default function AppRoutes({
       </Route>
 
       {/* Citizen Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['CITIZEN', 'ROLE_CITIZEN']} />}>
+      <Route element={<ProtectedRoute allowedRoles={['CITIZEN', 'ROLE_CITIZEN', 'CITIZEN_USER', 'ROLE_CITIZEN_USER', 'USER', 'ROLE_USER', 'PUBLIC', 'ROLE_PUBLIC']} />}>
         <Route 
           path="/citizen" 
           element={<Dashboard {...commonDashboardProps} />} 
@@ -121,6 +117,7 @@ export default function AppRoutes({
       {/* Common Details & Form Routes (Authorized for Logged-In Users) */}
       <Route element={<ProtectedRoute />}>
         <Route path="/grievance/:id" element={<GrievanceDetail />} />
+        <Route path="/superadmin/grievance-details/:id" element={<SuperAdminGrievanceDetail />} />
         <Route path="/appeal/:id" element={<AppealDetail />} />
         <Route path="/process-grievance/:id" element={<ProcessGrievance />} />
       </Route>

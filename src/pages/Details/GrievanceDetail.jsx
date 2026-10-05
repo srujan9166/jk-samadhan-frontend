@@ -61,6 +61,14 @@ export default function GrievanceDetail() {
     fetchDetail();
   }, [id]);
 
+  const handleGoBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-950 font-sans">
@@ -75,7 +83,7 @@ export default function GrievanceDetail() {
       <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-950 font-sans">
         <AlertCircle className="h-12 w-12 text-red-500" />
         <p className="text-sm font-bold text-slate-750 dark:text-slate-200 mt-3">Grievance Record Not Found</p>
-        <button onClick={() => navigate('/dashboard')} className="mt-4 px-4 py-2 bg-indigo-650 text-white rounded-lg text-xs font-bold cursor-pointer">
+        <button onClick={handleGoBack} className="mt-4 px-4 py-2 bg-indigo-650 text-white rounded-lg text-xs font-bold cursor-pointer">
           Return to Dashboard
         </button>
       </div>
@@ -94,7 +102,7 @@ export default function GrievanceDetail() {
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center shadow-xs">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => navigate('/dashboard')} 
+            onClick={handleGoBack} 
             className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors cursor-pointer border-0 bg-transparent"
           >
             <ArrowLeft className="h-5 w-5" />

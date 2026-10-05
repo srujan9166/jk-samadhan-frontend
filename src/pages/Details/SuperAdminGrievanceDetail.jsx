@@ -39,6 +39,14 @@ export default function SuperAdminGrievanceDetail() {
     fetchDetails();
   }, [id]);
 
+  const handleGoBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   const handleDownloadPDF = () => {
     // Generate PDF fallback/action
     window.print();
@@ -64,7 +72,7 @@ export default function SuperAdminGrievanceDetail() {
         <h3 className="text-lg font-black text-slate-800 dark:text-slate-200">{errorMsg}</h3>
         <p className="text-xs text-slate-450 mt-2 max-w-sm">Please verify the URL or ensure you have administrative permissions.</p>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={handleGoBack}
           className="mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-md cursor-pointer border-0 transition-colors"
         >
           Return to Dashboard
@@ -78,7 +86,7 @@ export default function SuperAdminGrievanceDetail() {
       <div className="flex-1 flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-950 font-sans text-center">
         <h3 className="text-lg font-bold text-slate-800">Grievance not found.</h3>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={handleGoBack}
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold cursor-pointer border-0"
         >
           Return to Dashboard
@@ -96,7 +104,7 @@ export default function SuperAdminGrievanceDetail() {
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={handleGoBack}
             className="p-2 hover:bg-slate-200 dark:hover:bg-slate-850 rounded-lg text-slate-600 dark:text-slate-350 transition-colors cursor-pointer border-0 bg-transparent flex items-center justify-center"
             title="Back to Dashboard"
           >
