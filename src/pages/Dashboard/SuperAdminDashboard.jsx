@@ -53,6 +53,7 @@ import {
   Maximize2,
   KeyRound,
   EyeOff,
+  FilePlus,
   X
 } from 'lucide-react';
 import grievanceService from '../../services/grievanceService';
@@ -60,21 +61,23 @@ import adminService from '../../services/adminService';
 import axiosClient from '../../api/axiosClient';
 import emblemImg from '../../assets/emblem.png';
 import logoImg from '../../assets/logo.png';
-import CitizenRegistrationReport from './CitizenRegistrationReport';
-import DealingHandGrievancesReport from './DealingHandGrievancesReport';
-import DepartmentUserListReport from './DepartmentUserListReport';
-import StatusWiseReport from './StatusWiseReport';
-import TreeDashboard from './TreeDashboard';
-import PendencyReport from './PendencyReport';
-import FeedbackAnalysis from './FeedbackAnalysis';
-import DistrictWiseReport from './DistrictWiseReport';
-import AverageTimeReport from './AverageTimeReport';
-import AppellateReport from './AppellateReport';
-import AnnouncementNotificationReport from './AnnouncementNotificationReport';
-import AdvanceQueryBuilder from './AdvanceQueryBuilder';
-import HeatmapReport from './HeatmapReport';
+import CitizenRegistrationReport from '../Reports/CitizenRegistrationReport';
+import DealingHandGrievancesReport from '../Reports/DealingHandGrievancesReport';
+import DepartmentUserListReport from '../Reports/DepartmentUserListReport';
+import StatusWiseReport from '../Reports/StatusWiseReport';
+import TreeDashboard from '../Analytics/TreeDashboard';
+import PendencyReport from '../Reports/PendencyReport';
+import FeedbackAnalysis from '../Analytics/FeedbackAnalysis';
+import DistrictWiseReport from '../Reports/DistrictWiseReport';
+import AverageTimeReport from '../Reports/AverageTimeReport';
+import AppellateReport from '../Reports/AppellateReport';
+import AnnouncementNotificationReport from '../Reports/AnnouncementNotificationReport';
+import AdvanceQueryBuilder from '../Analytics/AdvanceQueryBuilder';
+import HeatmapReport from '../Analytics/HeatmapReport';
 import JkIgramsDashboardView from './JkIgramsDashboardView';
 import CreateAnnouncementModal from '../../components/modals/CreateAnnouncementModal';
+import DealingHandForm from '../Forms/DealingHandForm';
+import KPICard from '../../components/dashboard/KPICard';
 
 const SUPPORTED_ROLES_MAP = {
   'ROLE_SuperAdmin': 'Super Admin',
@@ -234,10 +237,14 @@ export default function SuperAdminDashboard({ user, onLogout }) {
     }
   }, [sidebarActiveItem]);
 
-  // DM / Raabita Head / DealingHand Role Safety Guard: prevent restricted views
+  // Role Safety Guard: prevent restricted views for scoped roles
   useEffect(() => {
-    if ((isDM || isRaabitaHead || isDealingHand) && ['Appeal Dashboard', 'Appeal MIS Report', 'Appellate Report', 'Create Department Nodal', 'Create users', 'Create Offices & Designation', 'Department Mapping'].includes(sidebarActiveItem)) {
-      setSidebarActiveItem(isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard');
+    if (isDM && ['Appeal Dashboard', 'Appeal MIS Report', 'Appellate Report', 'Create Department Nodal', 'Create users', 'Create Offices & Designation', 'Department Mapping', 'Citizen Registration List', 'Dealing Hand Grievances', 'Tree Dashboard', 'Advance Query Builder', 'Announcement / Notification List'].includes(sidebarActiveItem)) {
+      setSidebarActiveItem('DM Dashboard');
+    } else if (isRaabitaHead && ['Appeal Dashboard', 'Appeal MIS Report', 'Appellate Report', 'Create Department Nodal', 'Create Offices & Designation', 'Department Mapping', 'Tree Dashboard', 'Advance Query Builder', 'Feedback Analysis', 'New Feedback Analysis', 'Heatmap'].includes(sidebarActiveItem)) {
+      setSidebarActiveItem('RMC Head Dashboard');
+    } else if (isDealingHand && ['Appeal Dashboard', 'Appeal MIS Report', 'Appellate Report', 'Create Department Nodal', 'Create Offices & Designation', 'Department Mapping', 'Tree Dashboard', 'Advance Query Builder', 'Feedback Analysis', 'New Feedback Analysis', 'Heatmap', 'District Wise Report', 'Announcement / Notification List'].includes(sidebarActiveItem)) {
+      setSidebarActiveItem('DealingHand Dashboard');
     }
   }, [isDM, isRaabitaHead, isDealingHand, sidebarActiveItem]);
 
@@ -262,9 +269,9 @@ export default function SuperAdminDashboard({ user, onLogout }) {
   const [actionRemark, setActionRemark] = useState('');
   const [actionStatus, setActionStatus] = useState('In Progress');
 
-  // Create User Form State (reference screenshot layout)
+  // Create User Form State 
   const [createUserForm, setCreateUserForm] = useState({
-    userType: 'DM',
+    userType: isDealingHand ? 'Dealing Hand' : 'DM',
     firstName: '',
     middleName: '',
     lastName: '',
@@ -273,9 +280,20 @@ export default function SuperAdminDashboard({ user, onLogout }) {
     officeName: '',
     designation: '',
     password: '',
-    division: '',
+    division: isDealingHand ? (user?.division || 'JAMMU') : '',
     district: ''
   });
+
+  useEffect(() => {
+    if (isDealingHand) {
+      setCreateUserForm(prev => ({
+        ...prev,
+        userType: 'Dealing Hand',
+        division: user?.division || prev.division || 'JAMMU',
+        district: ''
+      }));
+    }
+  }, [isDealingHand, user?.division]);
 
   // Nodal creation states
   const [designations, setDesignations] = useState([]);
@@ -1664,13 +1682,16 @@ export default function SuperAdminDashboard({ user, onLogout }) {
 
   const handleCreateUserSubmit = async (e) => {
     e.preventDefault();
-    if (!createUserForm.userType) {
+    const effectiveUserType = isDealingHand ? 'Dealing Hand' : createUserForm.userType;
+    if (!effectiveUserType) {
       alert("Please select a User Type.");
       return;
     }
-    const isNoDistrictUser = createUserForm.userType === 'Raabita Head' || createUserForm.userType === 'RMC Head' || createUserForm.userType === 'Dealing Hand Head';
-    const isUTLevel = createUserForm.division === 'UT' || isNoDistrictUser;
-    if (!createUserForm.firstName.trim() || !createUserForm.lastName.trim() || !createUserForm.mobile.trim() || !createUserForm.email.trim() || !createUserForm.designation.trim() || !createUserForm.password.trim() || !createUserForm.division || (!createUserForm.district && !isNoDistrictUser)) {
+    const isNoDistrictUser = effectiveUserType === 'Raabita Head' || effectiveUserType === 'RMC Head' || effectiveUserType === 'Dealing Hand Head' || isDealingHand;
+    const effectiveDivision = isDealingHand ? (user?.division || createUserForm.division || 'JAMMU') : createUserForm.division;
+    const isUTLevel = effectiveDivision === 'UT' || isNoDistrictUser;
+
+    if (!createUserForm.firstName.trim() || !createUserForm.lastName.trim() || !createUserForm.mobile.trim() || !createUserForm.email.trim() || !createUserForm.designation.trim() || !createUserForm.password.trim() || (!effectiveDivision && !isDealingHand) || (!createUserForm.district && !isNoDistrictUser)) {
       alert("All fields marked with * are mandatory.");
       return;
     }
@@ -1690,10 +1711,10 @@ export default function SuperAdminDashboard({ user, onLogout }) {
     }
 
     try {
-      const derivedDistrict = createUserForm.district || (isNoDistrictUser ? (createUserForm.division || 'UT') : (isUTLevel ? 'UT' : 'All'));
-      const derivedOfficeName = createUserForm.officeName || `Office of ${createUserForm.userType} (${derivedDistrict})`;
+      const derivedDistrict = isDealingHand ? null : (createUserForm.district || (isNoDistrictUser ? (effectiveDivision || 'UT') : (isUTLevel ? 'UT' : 'All')));
+      const derivedOfficeName = createUserForm.officeName || (isDealingHand ? `Office of Dealing Hand (${effectiveDivision})` : `Office of ${effectiveUserType} (${derivedDistrict})`);
       const res = await grievanceService.createOfficialUser({
-        userType: createUserForm.userType,
+        userType: effectiveUserType,
         firstName: createUserForm.firstName,
         middleName: createUserForm.middleName,
         lastName: createUserForm.lastName,
@@ -1703,13 +1724,13 @@ export default function SuperAdminDashboard({ user, onLogout }) {
         designationName: createUserForm.designation,
         password: createUserForm.password,
         district: derivedDistrict,
-        division: createUserForm.division
+        division: effectiveDivision
       });
 
       if (res && (res.statusCode === "1" || res.statusName === "Success")) {
-        alert(`User ${createUserForm.firstName} (${createUserForm.userType}) created successfully!`);
+        alert(`User ${createUserForm.firstName} (${effectiveUserType}) created successfully!`);
         setCreateUserForm({
-          userType: 'DM',
+          userType: isDealingHand ? 'Dealing Hand' : 'DM',
           firstName: '',
           middleName: '',
           lastName: '',
@@ -1718,10 +1739,10 @@ export default function SuperAdminDashboard({ user, onLogout }) {
           officeName: '',
           designation: '',
           password: '',
-          division: '',
+          division: isDealingHand ? (user?.division || 'JAMMU') : '',
           district: ''
         });
-        setSidebarActiveItem('Super Admin Dashboard');
+        setSidebarActiveItem(isDealingHand ? 'DealingHand Dashboard' : 'Super Admin Dashboard');
       } else {
         alert(res?.statusName || "Failed to create user. Please check if email/mobile already exists.");
       }
@@ -2109,6 +2130,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
             if (isDealingHand) {
               const dealingHandMenuItems = [
                 { label: 'DealingHand Dashboard', name: 'DealingHand Dashboard', icon: LayoutDashboard },
+                { label: 'Lodge Grievance', name: 'Lodge Grievance', icon: FilePlus },
                 { label: 'Create DealingHand Users', name: 'Create DealingHand Users', icon: Users },
                 { label: 'User List', name: 'User List', icon: UserCheck },
                 { label: 'Grievance Status', name: 'Grievance Status', icon: Flag },
@@ -2118,7 +2140,9 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
                   {dealingHandMenuItems.map((item, idx) => {
                     const Icon = item.icon;
-                    const isActive = sidebarActiveItem === item.name || (item.name === 'DealingHand Dashboard' && (sidebarActiveItem === 'Super Admin Dashboard' || sidebarActiveItem === 'Home'));
+                    const isActive = sidebarActiveItem === item.name || 
+                      (item.name === 'DealingHand Dashboard' && (sidebarActiveItem === 'Super Admin Dashboard' || sidebarActiveItem === 'Home')) ||
+                      (item.name === 'Create DealingHand Users' && sidebarActiveItem === 'Create users');
                     return (
                       <button
                         key={idx}
@@ -2128,6 +2152,12 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                           } else if (item.name === 'Grievance Status') {
                             setSidebarActiveItem('Status Wise Report');
                           } else if (item.name === 'Create DealingHand Users') {
+                            setCreateUserForm(prev => ({
+                              ...prev,
+                              userType: 'Dealing Hand',
+                              division: user?.division || prev.division || 'JAMMU',
+                              district: ''
+                            }));
                             setSidebarActiveItem('Create users');
                           } else {
                             setSidebarActiveItem(item.name);
@@ -2154,6 +2184,8 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 { label: 'Create RMC Users', name: 'Create RMC Users', icon: Users },
                 { label: 'User List', name: 'User List', icon: UserCheck },
                 { label: 'Grievance Status', name: 'Grievance Status', icon: Flag },
+                { label: 'District Wise Report', name: 'District Wise Report', icon: Map },
+                { label: 'Announcements', name: 'Announcement / Notification List', icon: Bell },
               ];
 
               return (
@@ -2192,8 +2224,11 @@ export default function SuperAdminDashboard({ user, onLogout }) {
               const dmMenuItems = [
                 { label: 'DM Dashboard', name: 'DM Dashboard', icon: LayoutDashboard },
                 { label: 'Analytical Dashboard', name: 'Analytical Dashboard', icon: BarChart3 },
+                { label: 'District Wise Report', name: 'District Wise Report', icon: Map },
+                { label: 'Status Wise Report', name: 'Status Wise Report', icon: BarChart3 },
                 { label: 'Feedback Analysis', name: 'Feedback Analysis', icon: MessageSquare },
                 { label: 'New Feedback Analysis', name: 'New Feedback Analysis', icon: MessageSquare },
+                { label: 'District Heatmap', name: 'Heatmap', icon: Flame },
               ];
 
               return (
@@ -2453,7 +2488,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                {sidebarActiveItem === 'Department Mapping' ? 'Department Mapping' : sidebarActiveItem === 'Create Department Nodal' ? 'Create Department Nodal' : sidebarActiveItem === 'Create RMC Users' ? 'Create RMC Users' : sidebarActiveItem === 'Create DealingHand Users' ? 'Create Users' : sidebarActiveItem === 'Create users' ? 'Create Users' : sidebarActiveItem === 'Create Offices & Designation' ? 'Create Offices & Designation' : (isDealingHand ? 'Home' : isRaabitaHead ? 'Home' : isDM ? 'DM Dashboard' : 'Home')}
+                {sidebarActiveItem === 'Department Mapping' ? 'Department Mapping' : sidebarActiveItem === 'Create Department Nodal' ? 'Create Department Nodal' : sidebarActiveItem === 'Create RMC Users' ? 'Create RMC Users' : sidebarActiveItem === 'Create DealingHand Users' ? (isDealingHand ? 'Create Dealing Hand Users' : 'Create Users') : sidebarActiveItem === 'Create users' ? (isDealingHand ? 'Create Dealing Hand Users' : 'Create Users') : sidebarActiveItem === 'Create Offices & Designation' ? 'Create Offices & Designation' : (isDealingHand ? 'Home' : isRaabitaHead ? 'Home' : isDM ? 'DM Dashboard' : 'Home')}
               </h2>
               <span className="text-slate-400 font-medium">|</span>
               <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
@@ -2464,9 +2499,9 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                     : sidebarActiveItem === 'Create RMC Users'
                       ? 'Create RMC Users'
                       : sidebarActiveItem === 'Create DealingHand Users'
-                        ? 'Create Users'
+                        ? (isDealingHand ? 'Create Dealing Hand Users' : 'Create Users')
                         : sidebarActiveItem === 'Create users'
-                          ? 'Create Users'
+                          ? (isDealingHand ? 'Create Dealing Hand Users' : 'Create Users')
                           : sidebarActiveItem === 'Create Offices & Designation'
                             ? 'Create Offices & Designation'
                             : sidebarActiveItem === 'Appeal Dashboard'
@@ -2574,6 +2609,10 @@ export default function SuperAdminDashboard({ user, onLogout }) {
             <CitizenRegistrationReport />
           ) : sidebarActiveItem === 'Dealing Hand Grievances' ? (
             <DealingHandGrievancesReport />
+          ) : sidebarActiveItem === 'Lodge Grievance' ? (
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm animate-fadeIn">
+              <DealingHandForm />
+            </div>
           ) : (sidebarActiveItem === 'Create Department Nodal' || sidebarActiveItem === 'Create RMC Users') ? (
             /* ────────────────────────────────────────────────────────
                VIEW: CREATE DEPARTMENT NODAL / RMC USERS SCREEN
@@ -2860,41 +2899,51 @@ export default function SuperAdminDashboard({ user, onLogout }) {
               {/* Card 1: Create Users */}
               <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                 <h3 className="font-extrabold text-indigo-600 dark:text-indigo-400 text-sm pb-1">
-                  Create Users
+                  {isDealingHand ? "Create Dealing Hand Users" : "Create Users"}
                 </h3>
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">User Type</label>
-                  <select
-                    value={createUserForm.userType}
-                    onChange={(e) => {
-                      const selectedType = e.target.value;
-                      const isRMC = selectedType === 'RMC Head' || selectedType === 'Raabita Head';
-                      const isDHHead = selectedType === 'Dealing Hand Head';
-                      const isNoDistrict = isRMC || isDHHead;
-                      setCreateUserForm({
-                        ...createUserForm,
-                        userType: selectedType,
-                        division: isRMC ? 'UT' : createUserForm.division,
-                        district: isNoDistrict ? (isRMC ? 'UT' : (createUserForm.division || 'UT')) : createUserForm.district
-                      });
-                    }}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-bold text-slate-800 dark:text-slate-200 text-xs"
-                  >
-                    <option value="RMC Head">RMC Head</option>
-                    <option value="Raabita Head">Raabita Head</option>
-                    <option value="DM">DM</option>
-                    <option value="Executive Administrator">Executive Administrator</option>
-                    <option value="Dealing Hand Head">Dealing Hand Head</option>
-                    <option value="FMC Head">FMC Head</option>
-                    <option value="Monitoring Cell">Monitoring Cell</option>
-                  </select>
+                  {isDealingHand ? (
+                    <input
+                      type="text"
+                      value="Dealing Hand"
+                      disabled
+                      readOnly
+                      className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-bold text-slate-700 dark:text-slate-300 text-xs cursor-not-allowed"
+                    />
+                  ) : (
+                    <select
+                      value={createUserForm.userType}
+                      onChange={(e) => {
+                        const selectedType = e.target.value;
+                        const isRMC = selectedType === 'RMC Head' || selectedType === 'Raabita Head';
+                        const isDHHead = selectedType === 'Dealing Hand Head';
+                        const isNoDistrict = isRMC || isDHHead;
+                        setCreateUserForm({
+                          ...createUserForm,
+                          userType: selectedType,
+                          division: isRMC ? 'UT' : createUserForm.division,
+                          district: isNoDistrict ? (isRMC ? 'UT' : (createUserForm.division || 'UT')) : createUserForm.district
+                        });
+                      }}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none font-bold text-slate-800 dark:text-slate-200 text-xs"
+                    >
+                      <option value="RMC Head">RMC Head</option>
+                      <option value="Raabita Head">Raabita Head</option>
+                      <option value="DM">DM</option>
+                      <option value="Executive Administrator">Executive Administrator</option>
+                      <option value="Dealing Hand Head">Dealing Hand Head</option>
+                      <option value="FMC Head">FMC Head</option>
+                      <option value="Monitoring Cell">Monitoring Cell</option>
+                    </select>
+                  )}
                 </div>
               </div>
 
               {/* Card 2: User Mapping - Create User */}
               <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
                 <h3 className="font-extrabold text-indigo-600 dark:text-indigo-400 text-sm pb-1 border-b border-slate-100 dark:border-slate-800">
-                  User Mapping - Create User
+                  {isDealingHand ? "User Mapping - Create Dealing Hand Users" : "User Mapping - Create User"}
                 </h3>
 
                 {/* Red Bullet Instructions */}
@@ -2985,8 +3034,8 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                   {/* Grid Row 3: Password, Division, District */}
                   {(() => {
                     const isRmcUser = createUserForm.userType === 'RMC Head' || createUserForm.userType === 'Raabita Head';
-                    const isDHHead = createUserForm.userType === 'Dealing Hand Head';
-                    const isNoDistrictUser = isRmcUser || isDHHead;
+                    const isDHHead = createUserForm.userType === 'Dealing Hand Head' || isDealingHand;
+                    const isNoDistrictUser = isRmcUser || isDHHead || isDealingHand;
 
                     return (
                       <div className={`grid grid-cols-1 ${isNoDistrictUser ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-5`}>
@@ -3007,33 +3056,43 @@ export default function SuperAdminDashboard({ user, onLogout }) {
 
                         <div>
                           <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">Division*</label>
-                          <select
-                            value={isRmcUser ? 'UT' : (createUserForm.division || '')}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setCreateUserForm({
-                                ...createUserForm,
-                                division: val,
-                                district: isNoDistrictUser ? (val || 'UT') : (val === 'UT' ? 'UT' : '')
-                              });
-                            }}
-                            className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-800 dark:text-slate-200 font-semibold text-xs focus:border-indigo-600"
-                            required
-                          >
-                            {isRmcUser ? (
-                              <option value="UT">UT</option>
-                            ) : (
-                              <>
-                                <option value="">--Select Division--</option>
-                                <option value="JAMMU">JAMMU</option>
-                                <option value="KASHMIR">KASHMIR</option>
+                          {isDealingHand ? (
+                            <input
+                              type="text"
+                              value={user?.division || createUserForm.division || 'JAMMU'}
+                              disabled
+                              readOnly
+                              className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-700 dark:text-slate-300 font-semibold text-xs cursor-not-allowed"
+                            />
+                          ) : (
+                            <select
+                              value={isRmcUser ? 'UT' : (createUserForm.division || '')}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCreateUserForm({
+                                  ...createUserForm,
+                                  division: val,
+                                  district: isNoDistrictUser ? (val || 'UT') : (val === 'UT' ? 'UT' : '')
+                                });
+                              }}
+                              className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-2.5 outline-none text-slate-800 dark:text-slate-200 font-semibold text-xs focus:border-indigo-600"
+                              required
+                            >
+                              {isRmcUser ? (
                                 <option value="UT">UT</option>
-                              </>
-                            )}
-                          </select>
+                              ) : (
+                                <>
+                                  <option value="">--Select Division--</option>
+                                  <option value="JAMMU">JAMMU</option>
+                                  <option value="KASHMIR">KASHMIR</option>
+                                  <option value="UT">UT</option>
+                                </>
+                              )}
+                            </select>
+                          )}
                         </div>
 
-                        {!isNoDistrictUser && (
+                        {!isNoDistrictUser && !isDealingHand && (
                           <div>
                             <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1 text-xs">
                               District*
@@ -5107,92 +5166,78 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 </div>
               )}
 
-              {/* Metric stats cards (8 columns/cards matching user reference) */}
+              {/* Shared Reusable Metric Stats Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* 1. Total Grievance Received */}
-                <div className="bg-[#1e6091] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                  <div className="space-y-2 relative z-10">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-blue-100">Total Grievance Received</span>
-                    <span className="block text-2xl font-black font-mono">Total {stats.totalG}</span>
-                    <span className="block text-[10px] font-semibold text-blue-200">Web {stats.web} Mobile {stats.App}</span>
-                  </div>
-                  <PieChart className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
-                </div>
+                <KPICard
+                  title="Total Grievance Received"
+                  value={`Total ${stats.totalG}`}
+                  icon={PieChart}
+                  color="bg-[#1e6091]"
+                  badge={`Web ${stats.web} Mobile ${stats.App}`}
+                />
 
                 {/* 2. Pending with Departments */}
-                <div className="bg-[#0096c7] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                  <div className="space-y-2 relative z-10">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-blue-50">Pending with Departments</span>
-                    <span className="block text-2xl font-black font-mono">{stats.pending}</span>
-                    <span className="block text-[10px] text-transparent select-none">-</span>
-                  </div>
-                  <Calendar className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
-                </div>
+                <KPICard
+                  title="Pending with Departments"
+                  value={stats.pending}
+                  icon={Calendar}
+                  color="bg-[#0096c7]"
+                />
 
                 {/* 3. Final Disposed */}
-                <div className="bg-[#4ea8de] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                  <div className="space-y-2 relative z-10">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-blue-50">Final Disposed</span>
-                    <span className="block text-2xl font-black font-mono">Total {stats.totalClosed}</span>
-                    <span className="block text-[10px] font-semibold text-blue-100">Resolved {stats.resolved} Rejected {stats.rejected}</span>
-                  </div>
-                  <ThumbsUp className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
-                </div>
+                <KPICard
+                  title="Final Disposed"
+                  value={`Total ${stats.totalClosed}`}
+                  icon={ThumbsUp}
+                  color="bg-[#4ea8de]"
+                  badge={`Resolved ${stats.resolved} Rejected ${stats.rejected}`}
+                />
 
                 {/* 4. Appealed */}
-                <div className="bg-[#f3722c] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                  <div className="space-y-2 relative z-10">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-orange-100">Appealed</span>
-                    <span className="block text-2xl font-black font-mono">{stats.appealReceviedCount}</span>
-                    <span className="block text-[10px] text-transparent select-none">-</span>
-                  </div>
-                  <AlertCircle className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
-                </div>
+                <KPICard
+                  title="Appealed"
+                  value={stats.appealReceviedCount}
+                  icon={AlertCircle}
+                  color="bg-[#f3722c]"
+                />
 
                 {/* 5. Forwarded */}
-                <div className="bg-[#f9c74f] text-slate-800 p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                  <div className="space-y-2 relative z-10">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-slate-700">Forwarded</span>
-                    <span className="block text-2xl font-black font-mono">{stats.forwarded}</span>
-                    <span className="block text-[10px] text-transparent select-none">-</span>
-                  </div>
-                  <Copy className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300 text-slate-700" />
-                </div>
+                <KPICard
+                  title="Forwarded"
+                  value={stats.forwarded}
+                  icon={Copy}
+                  color="bg-[#f9c74f] text-slate-800"
+                />
 
                 {/* 6. Does Not Pertain */}
-                <div className="bg-[#7209b7] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                  <div className="space-y-2 relative z-10">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-purple-100">Does Not Pertain</span>
-                    <span className="block text-2xl font-black font-mono">{stats.dNpCount}</span>
-                    <span className="block text-[10px] text-transparent select-none">-</span>
-                  </div>
-                  <Presentation className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
-                </div>
+                <KPICard
+                  title="Does Not Pertain"
+                  value={stats.dNpCount}
+                  icon={Presentation}
+                  color="bg-[#7209b7]"
+                />
 
                 {/* 7. CPGRAMS (Super Admin only) */}
                 {isSuperAdmin && (
-                  <div className="bg-[#f94144] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                    <div className="space-y-2 relative z-10">
-                      <span className="block text-[11px] font-bold uppercase tracking-wider text-red-100">CPGRAMS</span>
-                      <span className="block text-2xl font-black font-mono">Total {stats.totalCPGRAM}</span>
-                      <span className="block text-[10px] font-semibold text-red-200">Forwarded {stats.fwdToCPGRAM} Closed {stats.cpgramClosed}</span>
-                    </div>
-                    <Copy className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
-                  </div>
+                  <KPICard
+                    title="CPGRAMS"
+                    value={`Total ${stats.totalCPGRAM}`}
+                    icon={Copy}
+                    color="bg-[#f94144]"
+                    badge={`Forwarded ${stats.fwdToCPGRAM} Closed ${stats.cpgramClosed}`}
+                  />
                 )}
 
                 {/* 8. Escalation Figures (Super Admin only) */}
                 {isSuperAdmin && (
-                  <div className="bg-[#43aa8b] text-white p-4.5 rounded-xl shadow-xs flex justify-between items-center relative overflow-hidden group border-0 text-left">
-                    <div className="space-y-2 relative z-10">
-                      <span className="block text-[11px] font-bold uppercase tracking-wider text-teal-100">Escalation Figures</span>
-                      <span className="block text-2xl font-black font-mono">Total {stats.priorityFlagCount}</span>
-                      <span className="block text-[10px] font-semibold text-teal-200">
-                        Beyond 7 Days {Math.floor(Number(stats.priorityFlagCount) / 2)} Beyond 28 Days {Number(stats.priorityFlagCount) - Math.floor(Number(stats.priorityFlagCount) / 2)}
-                      </span>
-                    </div>
-                    <Flag className="h-10 w-10 opacity-30 transform group-hover:scale-110 transition duration-300" />
-                  </div>
+                  <KPICard
+                    title="Escalation Figures"
+                    value={`Total ${stats.priorityFlagCount}`}
+                    icon={Flag}
+                    color="bg-[#43aa8b]"
+                    badge={`Beyond 7 Days ${Math.floor(Number(stats.priorityFlagCount) / 2)} Beyond 28 Days ${Number(stats.priorityFlagCount) - Math.floor(Number(stats.priorityFlagCount) / 2)}`}
+                  />
                 )}
               </div>
 

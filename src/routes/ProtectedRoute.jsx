@@ -1,16 +1,21 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { normalizeRole } from '../config/dashboardConfig';
 
 const checkRoleMatch = (user, allowedRoles) => {
   if (!allowedRoles || allowedRoles.length === 0) return true;
   if (!user) return false;
 
   const role = (user.role || '').toUpperCase();
+  const normalized = normalizeRole(user);
   const email = (user.email || '').toLowerCase();
   const username = (user.username || '').toLowerCase();
 
   const formattedAllowed = allowedRoles.map((r) => r.toUpperCase());
+
+  // Canonical normalized role check
+  if (formattedAllowed.includes(normalized)) return true;
 
   // Direct role check
   if (formattedAllowed.includes(role)) return true;
@@ -81,7 +86,7 @@ const checkRoleMatch = (user, allowedRoles) => {
   return false;
 };
 
-const ProtectedRoute = ({ allowedRoles }) => {
+const ProtectedRoute = ({ allowedRoles, children }) => {
   const { isLoggedIn, isLoading, user } = useAuth();
   const location = useLocation();
 
@@ -106,7 +111,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
     return <Navigate to="/unauthorized" state={{ from: location }} replace />;
   }
 
-  return <Outlet />;
+  return children ? children : <Outlet />;
 };
 
 export default ProtectedRoute;

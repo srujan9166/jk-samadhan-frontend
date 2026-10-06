@@ -1,51 +1,80 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { normalizeRole } from '../../config/dashboardConfig';
+import SuperAdminDashboard from './SuperAdminDashboard';
 import CitizenDashboard from './CitizenDashboard';
 import DeptDashboard from './DeptDashboard';
 import AppellateDashboard from './AppellateDashboard';
-import AdminDashboard from './AdminDashboard';
-import SuperAdminDashboard from './SuperAdminDashboard';
 
+/**
+ * Common Authenticated Dashboard Component
+ * 
+ * Flow:
+ * Login -> Authenticated User -> Load User Context -> Single /dashboard -> Role-driven Renderer
+ * 
+ * Serves Super Admin, RMC Head & Users, DM, Monitoring Cell, Dealing Hand,
+ * Department Officers, Appellate Authority, and Citizens from the same route.
+ */
 export default function Dashboard(props) {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
 
-  const role = (user?.role || '').toUpperCase();
-  const email = (user?.email || '').toLowerCase();
-  const username = (user?.username || '').toLowerCase();
-
-  const isSuperAdmin = role === 'ROLE_SUPERADMIN' || role === 'SUPERADMIN' || email.includes('superadmin') || username.includes('superadmin') || role === 'SECRETARY' || role === 'ROLE_SECRETARY';
-  const isMonitoringCell = role === 'ROLE_MONITORING_CELL' || role === 'MONITORING_CELL' || email.includes('monitor') || username.includes('monitor');
-  const isDM = role === 'DM' || role === 'ROLE_DM' || role === 'ROLE_DISTRICT_MAGISTRATE';
-  const isRaabitaHead = role === 'ROLE_RAABITA_HEAD' || role === 'RAABITA_HEAD' || role === 'ROLE_RMC_HEAD' || role === 'RMC_HEAD' || role === 'RAABITAHEAD' || role === 'RMCHEAD' || role.includes('RAABITA') || role.includes('RMC') || email.includes('raabita') || username.includes('raabita') || username.includes('rmc');
-  const isDealingHand = role === 'DEALINGHAND' || role === 'ROLE_DEALINGHAND' || role === 'DEALING_HAND' || role === 'ROLE_DEALING_HAND' || role === 'DEALINGHANDHEAD' || role === 'DEALING_HAND_HEAD' || role === 'ROLE_DEALINGHAND_HEAD' || role.includes('DEALING') || email.includes('dealing') || username.includes('dealing');
-  const isCitizen = role === 'CITIZEN' || role === 'ROLE_CITIZEN' || role === 'USER' || role === 'ROLE_USER' || role === 'CITIZEN_USER' || role === 'ROLE_CITIZEN_USER' || role.includes('CITIZEN');
-
-  if (isCitizen && !isSuperAdmin && !isMonitoringCell && !isDM && !isRaabitaHead && !isDealingHand) {
-    return <CitizenDashboard user={user} onLogout={logout} {...props} />;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 font-sans">
+        <div className="flex flex-col items-center gap-4 select-none">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 animate-pulse">
+            Loading Authenticated Dashboard...
+          </span>
+        </div>
+      </div>
+    );
   }
 
-  const isAdmin = role.includes('ADMIN') || email.includes('admin') || username.includes('admin');
+  const role = normalizeRole(user);
 
-  if (isSuperAdmin || isMonitoringCell || isDM || isRaabitaHead || isDealingHand) {
-    return <SuperAdminDashboard user={user} onLogout={logout} {...props} />;
+  // Administrative, Oversight, District, and Operations Roles
+  // SuperAdmin, Monitoring Cell, RMC, DM, and Dealing Hand utilize the unified extensible dashboard
+  if (
+    role === 'SUPERADMIN' ||
+    role === 'MONITORING_CELL' ||
+    role === 'RMC' ||
+    role === 'DM' ||
+    role === 'DEALING_HAND'
+  ) {
+    return (
+      <SuperAdminDashboard 
+        user={user} 
+        onLogout={logout} 
+        normalizedRole={role}
+        {...props} 
+      />
+    );
   }
 
-  if (isAdmin) {
-    if (user?.department && user.department.trim() !== '') {
-      return <DeptDashboard user={user} onLogout={logout} {...props} />;
-    }
-    return <AdminDashboard user={user} onLogout={logout} {...props} />;
+  // Department Nodal / Officer Workflow
+  if (role === 'DEPARTMENT') {
+    return (
+      <DeptDashboard 
+        user={user} 
+        onLogout={logout} 
+        {...props} 
+      />
+    );
   }
 
-  if (role === 'APPELLATE' || role === 'ROLE_APPELLATE' || role === 'ROLE_APPELLATE_AUTHORITY') {
-    return <AppellateDashboard user={user} onLogout={logout} {...props} />;
+  // Appellate Authority Workflow
+  if (role === 'APPELLATE') {
+    return (
+      <AppellateDashboard 
+        user={user} 
+        onLogout={logout} 
+        {...props} 
+      />
+    );
   }
 
-  if (role === 'OFFICER' || role === 'DEPARTMENT' || role === 'ROLE_DEPARTMENT' || role === 'ROLE_DEPARTMENT_NODAL') {
-    return <DeptDashboard user={user} onLogout={logout} {...props} />;
-  }
-
-  // Fallback to Citizen view for standard individuals
+  // Citizen Role: Integrated into the common dashboard architecture
   return (
     <CitizenDashboard 
       user={user} 

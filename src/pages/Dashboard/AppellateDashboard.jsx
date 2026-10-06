@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import emblemImg from '../../assets/emblem.png';
 import grievanceService from '../../services/grievanceService';
+import KPICardsGrid from '../../components/dashboard/KPICardsGrid';
 
 export default function AppellateDashboard({ user, onLogout }) {
   const navigate = useNavigate();
@@ -108,37 +109,16 @@ export default function AppellateDashboard({ user, onLogout }) {
       {/* Main Grid */}
       <main className="p-6 space-y-6 max-w-7xl mx-auto w-full text-left">
         
-        {/* Metric widgets */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="bg-[#1e40af] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Total Appeals Received</span>
-              <span className="block text-2xl font-black font-mono">{stats.total}</span>
-            </div>
-            <Scale className="h-9 w-9 opacity-35" />
-          </div>
-          <div className="bg-[#b45309] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Pending Hearing</span>
-              <span className="block text-2xl font-black font-mono">{stats.pending}</span>
-            </div>
-            <AlertCircle className="h-9 w-9 opacity-35" />
-          </div>
-          <div className="bg-[#15803d] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Disposed Appeals</span>
-              <span className="block text-2xl font-black font-mono">{stats.resolved}</span>
-            </div>
-            <ThumbsUp className="h-9 w-9 opacity-35" />
-          </div>
-          <div className="bg-[#0f766e] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Scheduled Hearings</span>
-              <span className="block text-2xl font-black font-mono">{stats.hearingScheduled}</span>
-            </div>
-            <ThumbsDown className="h-9 w-9 opacity-35" strokeWidth={1.5} />
-          </div>
-        </div>
+        {/* Reusable Metric widgets */}
+        <KPICardsGrid
+          columns="grid-cols-1 sm:grid-cols-4"
+          cards={[
+            { id: 'total', title: 'Total Appeals Received', value: stats.total, icon: Scale, color: 'blue' },
+            { id: 'pending', title: 'Pending Hearing', value: stats.pending, icon: AlertCircle, color: 'yellow' },
+            { id: 'resolved', title: 'Disposed Appeals', value: stats.resolved, icon: ThumbsUp, color: 'green' },
+            { id: 'hearing', title: 'Scheduled Hearings', value: stats.hearingScheduled, icon: RefreshCw, color: 'teal' },
+          ]}
+        />
 
         {/* DataTable Container */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col">

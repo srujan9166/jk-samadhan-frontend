@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import emblemImg from '../../assets/emblem.png';
 import grievanceService from '../../services/grievanceService';
+import KPICardsGrid from '../../components/dashboard/KPICardsGrid';
 
 export default function DeptDashboard({ user, onLogout }) {
   const navigate = useNavigate();
@@ -83,51 +84,18 @@ export default function DeptDashboard({ user, onLogout }) {
       {/* Main Grid */}
       <main className="p-6 space-y-6 max-w-7xl mx-auto w-full text-left">
         
-        {/* Metric widgets */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="bg-[#1e40af] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Total Cases</span>
-              <span className="block text-2xl font-black font-mono">{stats.total}</span>
-            </div>
-            <LayoutDashboard className="h-9 w-9 opacity-35" />
-          </div>
-          <div className="bg-[#0f766e] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Active/Pending</span>
-              <span className="block text-2xl font-black font-mono">{stats.pending}</span>
-            </div>
-            <AlertCircle className="h-9 w-9 opacity-35" />
-          </div>
-          <div className="bg-[#15803d] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Resolved</span>
-              <span className="block text-2xl font-black font-mono">{stats.resolved}</span>
-            </div>
-            <ThumbsUp className="h-9 w-9 opacity-35" />
-          </div>
-          <div className="bg-[#b45309] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Forwarded</span>
-              <span className="block text-2xl font-black font-mono">{stats.forwarded}</span>
-            </div>
-            <Share2 className="h-9 w-9 opacity-35" />
-          </div>
-          <div className="bg-[#b91c1c] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Rejected</span>
-              <span className="block text-2xl font-black font-mono">{stats.rejected}</span>
-            </div>
-            <ThumbsDown className="h-9 w-9 opacity-35" />
-          </div>
-          <div className="bg-[#475569] text-white p-5 rounded-xl shadow-xs flex justify-between items-center">
-            <div className="space-y-1">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-white/90">Does Not Pertain</span>
-              <span className="block text-2xl font-black font-mono">{stats.dnp}</span>
-            </div>
-            <BookOpen className="h-9 w-9 opacity-35" />
-          </div>
-        </div>
+        {/* Reusable Metric widgets */}
+        <KPICardsGrid
+          columns="grid-cols-1 sm:grid-cols-3 lg:grid-cols-6"
+          cards={[
+            { id: 'total', title: 'Total Cases', value: stats.total, icon: LayoutDashboard, color: 'blue' },
+            { id: 'pending', title: 'Active/Pending', value: stats.pending, icon: AlertCircle, color: 'teal' },
+            { id: 'resolved', title: 'Resolved', value: stats.resolved, icon: ThumbsUp, color: 'green' },
+            { id: 'forwarded', title: 'Forwarded', value: stats.forwarded, icon: Share2, color: 'yellow' },
+            { id: 'rejected', title: 'Rejected', value: stats.rejected, icon: ThumbsDown, color: 'rose' },
+            { id: 'dnp', title: 'Does Not Pertain', value: stats.dnp, icon: BookOpen, color: 'bg-[#475569]' },
+          ]}
+        />
 
         {/* DataTable Container */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col">

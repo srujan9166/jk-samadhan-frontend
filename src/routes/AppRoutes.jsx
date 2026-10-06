@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 // Pages imports
 import Landing from '../pages/Landing/Landing';
 import Dashboard from '../pages/Dashboard/Dashboard';
+import DashboardShell from '../components/layout/DashboardShell';
 import GrievanceDetail from '../pages/Details/GrievanceDetail';
 import AppealDetail from '../pages/Details/AppealDetail';
 import DealingHandForm from '../pages/Forms/DealingHandForm';
@@ -46,80 +47,78 @@ export default function AppRoutes({
         } 
       />
 
-      {/* Generic /dashboard */}
-      <Route 
-        path="/dashboard" 
-        element={
-          <ProtectedRoute>
-            <Dashboard {...commonDashboardProps} />
-          </ProtectedRoute>
-        } 
-      />
+      {/* Single Layout Shell (Matching JK Revenue <Route element={<Sidebar />}>) */}
+      <Route element={<DashboardShell />}>
+        {/* Role-Prefixed Routes like JK Revenue (mounting unified Dashboard component) */}
+        <Route element={<ProtectedRoute allowedRoles={['SUPERADMIN']} />}>
+          <Route path="/superAdmin" element={<Dashboard {...commonDashboardProps} />} />
+          <Route path="/superAdmin/*" element={<Dashboard {...commonDashboardProps} />} />
+        </Route>
 
-      {/* Super Admin, RMC Head & Dealing Hand Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['ROLE_SUPERADMIN', 'SUPERADMIN', 'SECRETARY', 'ROLE_RAABITA_HEAD', 'RAABITA_HEAD', 'ROLE_RMC_HEAD', 'RMC_HEAD', 'DEALINGHAND', 'ROLE_DEALINGHAND', 'DEALING_HAND', 'ROLE_DEALING_HAND', 'DEALINGHANDHEAD', 'DEALING_HAND_HEAD', 'ROLE_DEALINGHAND_HEAD', 'ROLE_DM', 'DM', 'ROLE_DEPT_ADMIN', 'DEPT_ADMIN', 'OFFICER', 'DEPARTMENT']} />}>
+        <Route element={<ProtectedRoute allowedRoles={['MONITORING_CELL']} />}>
+          <Route path="/monitoringCell" element={<Dashboard {...commonDashboardProps} />} />
+          <Route path="/monitoringCell/*" element={<Dashboard {...commonDashboardProps} />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['RMC']} />}>
+          <Route path="/rmc" element={<Dashboard {...commonDashboardProps} />} />
+          <Route path="/rmc/*" element={<Dashboard {...commonDashboardProps} />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['DM']} />}>
+          <Route path="/dm" element={<Dashboard {...commonDashboardProps} />} />
+          <Route path="/dm/*" element={<Dashboard {...commonDashboardProps} />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['DEPARTMENT']} />}>
+          <Route path="/dept" element={<Dashboard {...commonDashboardProps} />} />
+          <Route path="/dept/*" element={<Dashboard {...commonDashboardProps} />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['DEALING_HAND']} />}>
+          <Route path="/dealingHand" element={<Dashboard {...commonDashboardProps} />} />
+          <Route path="/dealingHand/*" element={<Dashboard {...commonDashboardProps} />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['APPELLATE']} />}>
+          <Route path="/appellate" element={<Dashboard {...commonDashboardProps} />} />
+          <Route path="/appellate/*" element={<Dashboard {...commonDashboardProps} />} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['CITIZEN']} />}>
+          <Route path="/citizen" element={<Dashboard {...commonDashboardProps} />} />
+          <Route path="/citizen/*" element={<Dashboard {...commonDashboardProps} />} />
+        </Route>
+
+        {/* Primary /dashboard route */}
         <Route 
-          path="/super-admin" 
-          element={<Dashboard {...commonDashboardProps} />} 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <Dashboard {...commonDashboardProps} />
+            </ProtectedRoute>
+          } 
         />
-      </Route>
 
-      {/* Monitoring Cell Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['ROLE_MONITORING_CELL', 'MONITORING_CELL']} />}>
-        <Route 
-          path="/monitoring-cell" 
-          element={<Dashboard {...commonDashboardProps} />} 
-        />
-      </Route>
+        {/* Legacy route aliases redirect to canonical role paths */}
+        <Route path="/super-admin/*" element={<Navigate to="/superAdmin" replace />} />
+        <Route path="/monitoring-cell/*" element={<Navigate to="/monitoringCell" replace />} />
+        <Route path="/department/*" element={<Navigate to="/dept" replace />} />
+        <Route path="/dealing-hand/*" element={<Navigate to="/dealingHand" replace />} />
 
-      {/* Department Admin & Officer Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['ROLE_DEPT_ADMIN', 'DEPT_ADMIN', 'OFFICER', 'DEPARTMENT', 'ROLE_DEPARTMENT', 'ADMIN']} />}>
-        <Route 
-          path="/department" 
-          element={<Dashboard {...commonDashboardProps} />} 
-        />
-      </Route>
+        {/* Dealing Hand Direct Form Routes */}
+        <Route element={<ProtectedRoute allowedRoles={['DEALINGHAND', 'ROLE_DEALINGHAND', 'DEALING_HAND', 'DEALINGHANDHEAD', 'ROLE_DEALINGHAND_HEAD']} />}>
+          <Route path="/dh-lodge" element={<DealingHandForm />} />
+          <Route path="/dealing-hand/lodge" element={<DealingHandForm />} />
+        </Route>
 
-      {/* District Magistrate (DM) Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['ROLE_DM', 'DM', 'ROLE_DISTRICT_MAGISTRATE']} />}>
-        <Route 
-          path="/dm" 
-          element={<Dashboard {...commonDashboardProps} />} 
-        />
-      </Route>
-
-      {/* Appellate Authority Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['ROLE_APPELLATE', 'APPELLATE', 'ROLE_APPELLATE_AUTHORITY']} />}>
-        <Route 
-          path="/appellate" 
-          element={<Dashboard {...commonDashboardProps} />} 
-        />
-      </Route>
-
-      {/* Dealing Hand Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['DEALINGHAND', 'ROLE_DEALINGHAND', 'DEALING_HAND']} />}>
-        <Route 
-          path="/dealing-hand" 
-          element={<Dashboard {...commonDashboardProps} />} 
-        />
-        <Route path="/dh-lodge" element={<DealingHandForm />} />
-        <Route path="/dealing-hand/lodge" element={<DealingHandForm />} />
-      </Route>
-
-      {/* Citizen Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['CITIZEN', 'ROLE_CITIZEN', 'CITIZEN_USER', 'ROLE_CITIZEN_USER', 'USER', 'ROLE_USER', 'PUBLIC', 'ROLE_PUBLIC']} />}>
-        <Route 
-          path="/citizen" 
-          element={<Dashboard {...commonDashboardProps} />} 
-        />
-      </Route>
-
-      {/* Common Details & Form Routes (Authorized for Logged-In Users) */}
-      <Route element={<ProtectedRoute />}>
-        <Route path="/grievance/:id" element={<GrievanceDetail />} />
-        <Route path="/superadmin/grievance-details/:id" element={<SuperAdminGrievanceDetail />} />
-        <Route path="/appeal/:id" element={<AppealDetail />} />
-        <Route path="/process-grievance/:id" element={<ProcessGrievance />} />
+        {/* Common Details & Form Routes (Authorized for Logged-In Users) */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/grievance/:id" element={<GrievanceDetail />} />
+          <Route path="/superadmin/grievance-details/:id" element={<SuperAdminGrievanceDetail />} />
+          <Route path="/appeal/:id" element={<AppealDetail />} />
+          <Route path="/process-grievance/:id" element={<ProcessGrievance />} />
+        </Route>
       </Route>
 
       {/* Unauthorized Access Fallback */}

@@ -27,6 +27,7 @@ import {
 import emblemImg from '../../assets/emblem.png';
 import logoImg from '../../assets/logo.png';
 import GISMapModal from '../../components/modals/GISMapModal';
+import KPICardsGrid from '../../components/dashboard/KPICardsGrid';
 
 export default function CitizenDashboard({
   user,
@@ -1050,55 +1051,16 @@ export default function CitizenDashboard({
 
           {activeView === 'dashboard' ? (
             <>
-              {/* Stats Metrics Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-
-                {/* Card 1: Total Submitted */}
-                <div className="bg-[#1e40af] text-white p-5 rounded-xl shadow-md border border-blue-800/10 flex justify-between items-center relative overflow-hidden select-none transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-                  <div className="space-y-1 z-10 text-left">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-white/90">Total Grievances Submitted</span>
-                    <span className="block text-3xl font-extrabold font-mono">{totalCount}</span>
-                  </div>
-                  <PieChart className="h-11 w-11 text-white/20 stroke-[1.5] shrink-0" />
-                </div>
-
-                {/* Card 2: Pending with Department */}
-                <div className="bg-[#0f766e] text-white p-5 rounded-xl shadow-md border border-teal-800/10 flex justify-between items-center relative overflow-hidden select-none transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-                  <div className="space-y-1 z-10 text-left">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-white/90">Pending with Department</span>
-                    <span className="block text-3xl font-extrabold font-mono">{pendingCount}</span>
-                  </div>
-                  <Calendar className="h-11 w-11 text-white/20 stroke-[1.5] shrink-0" />
-                </div>
-
-                {/* Card 3: Resolved */}
-                <div className="bg-[#15803d] text-white p-5 rounded-xl shadow-md border border-green-800/10 flex justify-between items-center relative overflow-hidden select-none transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-                  <div className="space-y-1 z-10 text-left">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-white/90">Resolved</span>
-                    <span className="block text-3xl font-extrabold font-mono">{resolvedCount}</span>
-                  </div>
-                  <ThumbsUp className="h-11 w-11 text-white/20 stroke-[1.5] shrink-0" />
-                </div>
-
-                {/* Card 4: Appealed */}
-                <div className="bg-[#c2410c] text-white p-5 rounded-xl shadow-md border border-orange-800/10 flex justify-between items-center relative overflow-hidden select-none transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-                  <div className="space-y-1 z-10 text-left">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-white/90">Appealed</span>
-                    <span className="block text-3xl font-extrabold font-mono">{appealedCount}</span>
-                  </div>
-                  <AlertCircle className="h-11 w-11 text-white/20 stroke-[1.5] shrink-0" />
-                </div>
-
-                {/* Card 5: Rejected */}
-                <div className="bg-[#eab308] text-white p-5 rounded-xl shadow-md border border-yellow-800/10 flex justify-between items-center relative overflow-hidden select-none transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
-                  <div className="space-y-1 z-10 text-left">
-                    <span className="block text-[11px] font-bold uppercase tracking-wider text-white/90">Rejected</span>
-                    <span className="block text-3xl font-extrabold font-mono">{rejectedCount}</span>
-                  </div>
-                  <ClipboardList className="h-11 w-11 text-white/20 stroke-[1.5] shrink-0" />
-                </div>
-
-              </div>
+              {/* Reusable Stats Metrics Row */}
+              <KPICardsGrid
+                cards={[
+                  { id: 'total', title: 'Total Grievances Submitted', value: totalCount, icon: PieChart, color: 'blue' },
+                  { id: 'pending', title: 'Pending with Department', value: pendingCount, icon: Calendar, color: 'teal' },
+                  { id: 'resolved', title: 'Resolved', value: resolvedCount, icon: ThumbsUp, color: 'green' },
+                  { id: 'appealed', title: 'Appealed', value: appealedCount, icon: AlertCircle, color: 'orange' },
+                  { id: 'rejected', title: 'Rejected', value: rejectedCount, icon: ClipboardList, color: 'yellow' },
+                ]}
+              />
 
               {/* Grievances List Container */}
               <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
