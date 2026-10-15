@@ -27,9 +27,10 @@ axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Trigger a redirect to logout or clear auth storage
+      // Trigger a redirect to logout and completely wipe auth and session storage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      sessionStorage.clear();
       window.dispatchEvent(new Event('auth-logout'));
     }
     return Promise.reject(error);

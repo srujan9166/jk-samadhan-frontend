@@ -100,6 +100,14 @@ export default function AppRoutes({
           } 
         />
 
+        {/* Dedicated Analytical Dashboard Route with Role-Based Protection */}
+        <Route element={<ProtectedRoute allowedRoles={['SUPERADMIN', 'MONITORING_CELL', 'RMC', 'DM']} />}>
+          <Route 
+            path="/analytical-dashboard" 
+            element={<Dashboard initialView="Analytical Dashboard" {...commonDashboardProps} />} 
+          />
+        </Route>
+
         {/* Legacy route aliases redirect to canonical role paths */}
         <Route path="/super-admin/*" element={<Navigate to="/superAdmin" replace />} />
         <Route path="/monitoring-cell/*" element={<Navigate to="/monitoringCell" replace />} />

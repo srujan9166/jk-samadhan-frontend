@@ -16,8 +16,9 @@ const grievanceService = {
     return response.data;
   },
 
-  getSuperAdminDashboardSummary: async () => {
-    const response = await axiosClient.get('/api/super-admin/dashboard/summary');
+  getSuperAdminDashboardSummary: async (district) => {
+    const params = district ? { district } : {};
+    const response = await axiosClient.get('/api/super-admin/dashboard/summary', { params });
     return response.data;
   },
 

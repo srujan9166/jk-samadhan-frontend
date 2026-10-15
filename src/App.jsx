@@ -52,15 +52,17 @@ function AppContent() {
     setIsVideoOpen(true);
   };
 
-  const handleLoginSuccess = (userData) => {
+  const handleLoginSuccess = () => {
     setIsAuthOpen(false);
-    const targetPath = getRoleRedirectPath(userData || user);
-    navigate(targetPath, { replace: true });
+    setGrievances([]);
+    // Direct fresh login strictly to common /dashboard
+    navigate('/dashboard', { replace: true });
   };
 
   const handleLogout = () => {
     logout();
-    sessionStorage.removeItem('samadhan_lastVisitedPath');
+    setGrievances([]);
+    sessionStorage.clear();
     navigate('/', { replace: true });
   };
 

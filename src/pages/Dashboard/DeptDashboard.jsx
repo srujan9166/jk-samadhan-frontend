@@ -1,43 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  ThumbsUp, 
-  ThumbsDown, 
-  AlertCircle, 
-  RefreshCw, 
-  ArrowRight,
-  ClipboardList,
-  Search,
-  BookOpen,
-  Share2
-} from 'lucide-react';
 import emblemImg from '../../assets/emblem.png';
 import grievanceService from '../../services/grievanceService';
-import KPICardsGrid from '../../components/dashboard/KPICardsGrid';
+import KPICards from '../../components/dashboard/KPICards';
+import TableFilters from '../../components/dashboard/TableFilters';
+import GrievanceTable from '../../components/dashboard/GrievanceTable';
+import Pagination from '../../components/dashboard/Pagination';
+import DashboardLayout from '../../components/dashboard/DashboardLayout';
+import { DASHBOARD_ROLE_CONFIG } from '../../config/dashboardConfig';
 
+/**
+ * Department Dashboard using Common Dashboard Components
+ */
 export default function DeptDashboard({ user, onLogout }) {
   const navigate = useNavigate();
   const [grievances, setGrievances] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, resolved: 0, rejected: 0, forwarded: 0, dnp: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, resolved: 0, rejected: 0, forwarded: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const roleConfig = DASHBOARD_ROLE_CONFIG.DEPARTMENT;
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       const data = await grievanceService.getGrievances();
       setGrievances(data);
-      
-      const total = data.length;
-      const pending = data.filter(g => g.status === 'Pending' || g.status === 'Under Review').length;
-      const resolved = data.filter(g => g.status === 'Resolved').length;
-      const rejected = data.filter(g => g.status === 'Rejected').length;
-      const forwarded = data.filter(g => g.status === 'Forwarded').length;
-      const dnp = data.filter(g => g.status === 'Does Not Pertain').length;
 
-      setStats({ total, pending, resolved, rejected, forwarded, dnp });
+      const total = data.length;
+      const pending = data.filter((g) => g.status === 'Pending' || g.status === 'Under Review').length;
+      const resolved = data.filter((g) => g.status === 'Resolved').length;
+      const rejected = data.filter((g) => g.status === 'Rejected').length;
+      const forwarded = data.filter((g) => g.status === 'Forwarded').length;
+
+      setStats({ total, pending, resolved, rejected, forwarded });
     } catch (err) {
       console.error('Error loading Dept dashboard:', err);
     } finally {
@@ -49,137 +48,91 @@ export default function DeptDashboard({ user, onLogout }) {
     loadData();
   }, []);
 
-  const filtered = grievances.filter(g => {
-    const query = searchQuery.toLowerCase();
-    return (
-      g.id?.toString().includes(query) ||
-      g.department?.toLowerCase().includes(query) ||
-      g.grievanceCategory?.toLowerCase().includes(query) ||
-      g.description?.toLowerCase().includes(query)
-    );
+  const filtered = grievances.filter((g) => {
+    if (statusFilter && g.status?.toLowerCase() !== statusFilter.toLowerCase()) {
+      return false;
+    }
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return (
+        g.id?.toString().includes(query) ||
+        g.department?.toLowerCase().includes(query) ||
+        g.grievanceCategory?.toLowerCase().includes(query) ||
+        g.description?.toLowerCase().includes(query)
+      );
+    }
+    return true;
   });
 
-  return (
-    <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans select-none animate-fadeIn text-xs">
-      
-      {/* Dashboard Subheader */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center shadow-xs">
-        <div className="flex items-center gap-3">
-          <img src={emblemImg} alt="Emblem" className="h-10 w-auto" />
-          <div className="text-left font-sans">
-            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 tracking-tight leading-none">Department Nodal Dashboard</h2>
-            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-455 uppercase tracking-widest block mt-1.5 font-sans">
-              Welcome, {user?.name || 'Department Nodal Officer'}
-            </span>
-          </div>
-        </div>
-        <button 
-          onClick={onLogout}
-          className="px-4 py-2 border border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/20 text-red-655 dark:text-red-400 font-bold rounded-lg text-xs transition-colors cursor-pointer"
-        >
-          Logout
-        </button>
-      </header>
+  const totalElements = filtered.length;
+  const totalPages = Math.ceil(totalElements / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedData = filtered.slice(startIndex, startIndex + pageSize);
 
-      {/* Main Grid */}
-      <main className="p-6 space-y-6 max-w-7xl mx-auto w-full text-left">
-        
-        {/* Reusable Metric widgets */}
-        <KPICardsGrid
-          columns="grid-cols-1 sm:grid-cols-3 lg:grid-cols-6"
-          cards={[
-            { id: 'total', title: 'Total Cases', value: stats.total, icon: LayoutDashboard, color: 'blue' },
-            { id: 'pending', title: 'Active/Pending', value: stats.pending, icon: AlertCircle, color: 'teal' },
-            { id: 'resolved', title: 'Resolved', value: stats.resolved, icon: ThumbsUp, color: 'green' },
-            { id: 'forwarded', title: 'Forwarded', value: stats.forwarded, icon: Share2, color: 'yellow' },
-            { id: 'rejected', title: 'Rejected', value: stats.rejected, icon: ThumbsDown, color: 'rose' },
-            { id: 'dnp', title: 'Does Not Pertain', value: stats.dnp, icon: BookOpen, color: 'bg-[#475569]' },
-          ]}
+  const handleAction = (action, item) => {
+    if (action === 'process' || action === 'view') {
+      navigate(`/process-grievance/${item.id}`);
+    }
+  };
+
+  return (
+    <DashboardLayout
+      user={user}
+      role="DEPARTMENT"
+      roleTitle="Department Nodal"
+      sidebarItems={roleConfig.sidebar || []}
+      activeSidebarItem="Department Dashboard"
+      onSelectSidebarItem={() => {}}
+      onLogout={onLogout}
+    >
+      <div className="p-6 space-y-6 max-w-7xl mx-auto w-full text-left">
+        {/* Reusable Common KPI Cards */}
+        <KPICards
+          config={roleConfig.kpis}
+          stats={stats}
+          activeFilter={statusFilter}
+          onCardClick={(val) => {
+            setStatusFilter(val === statusFilter ? '' : val);
+            setCurrentPage(1);
+          }}
+          columns="grid-cols-1 sm:grid-cols-2 lg:grid-cols-5"
         />
 
-        {/* DataTable Container */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 uppercase tracking-wider">Department Grievances Queue</h3>
-            <div className="flex items-center gap-3">
-              <div className="relative flex items-center">
-                <span className="text-slate-550 dark:text-slate-400 font-bold mr-2">Search:</span>
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 rounded px-2.5 py-1 text-xs outline-none focus:border-indigo-650 text-slate-850 dark:text-slate-100"
-                  placeholder="Filter cases..."
-                />
-              </div>
-              <button 
-                onClick={loadData}
-                className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-250 dark:border-slate-700 rounded-lg text-slate-655 dark:text-slate-300 cursor-pointer"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
+        {/* Reusable DataTable Container */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col overflow-hidden">
+          {/* Reusable Filters */}
+          <TableFilters
+            pageSize={pageSize}
+            onPageSizeChange={(sz) => { setPageSize(sz); setCurrentPage(1); }}
+            searchQuery={searchQuery}
+            onSearchChange={(q) => { setSearchQuery(q); setCurrentPage(1); }}
+            placeholder="Search by ID, department, category..."
+            onRefresh={loadData}
+            isRefreshing={isLoading}
+            statusFilter={statusFilter}
+            statusOptions={['Pending', 'Resolved', 'Rejected', 'Forwarded']}
+            onStatusFilterChange={(st) => { setStatusFilter(st); setCurrentPage(1); }}
+          />
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-slate-455 dark:text-slate-400 uppercase tracking-widest text-[9px] font-extrabold select-none">
-                  <th className="px-6 py-3.5">Grievance ID</th>
-                  <th className="px-6 py-3.5">Complainant</th>
-                  <th className="px-6 py-3.5">Category</th>
-                  <th className="px-6 py-3.5">PSGA Status</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-400 font-medium">Loading department cases...</td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-400 font-medium">No grievances recorded.</td>
-                  </tr>
-                ) : (
-                  filtered.map((g) => (
-                    <tr key={g.id} className="border-b border-slate-150 dark:border-slate-850 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-slate-600 dark:text-slate-400">JK-{100000 + g.id}</td>
-                      <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-300">{g.submittedBy?.name || 'Citizen'}</td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{g.grievanceCategory || 'N/A'}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${g.psga === 'Yes' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
-                          PSGA: {g.psga || 'No'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          g.status === 'Resolved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900' :
-                          g.status === 'Pending' ? 'bg-blue-50 text-blue-600 border border-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900' :
-                          'bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900'
-                        }`}>
-                          {g.status || 'Pending'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <button 
-                          onClick={() => navigate(`/process-grievance/${g.id}`)}
-                          className="px-3 py-1 bg-[#164581] hover:opacity-95 text-white rounded text-[10px] font-bold inline-flex items-center gap-1 mx-auto cursor-pointer border-0 shadow-sm"
-                        >
-                          <span>Review & Process</span>
-                          <ArrowRight className="h-3 w-3" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          {/* Reusable Common Grievance Table */}
+          <GrievanceTable
+            data={paginatedData}
+            config={roleConfig.table}
+            isLoading={isLoading}
+            onAction={handleAction}
+            startIndex={startIndex}
+          />
+
+          {/* Reusable Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
-
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

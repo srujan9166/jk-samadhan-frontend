@@ -6,9 +6,7 @@ import { getRoleBaseUrl, ROLE_DASHBOARDS } from '../config/dashboardConfig';
 export { ROLE_DASHBOARDS };
 
 export const getRoleRedirectPath = (user) => {
-  if (!user) return '/';
-  // Redirect to role-prefixed base URL (e.g. /superAdmin, /dept, /citizen) like JK Revenue
-  return getRoleBaseUrl(user);
+  return '/dashboard';
 };
 
 export function RoleRedirectGuard({ children }) {
@@ -16,36 +14,12 @@ export function RoleRedirectGuard({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Store last visited path in sessionStorage when navigating
-  useEffect(() => {
-    if (isLoggedIn && user && location.pathname !== '/' && !['/login', '/register', '/unauthorized'].includes(location.pathname)) {
-      sessionStorage.setItem('samadhan_lastVisitedPath', location.pathname);
-    }
-  }, [location.pathname, isLoggedIn, user]);
-
   useEffect(() => {
     if (isLoading) return;
 
+    // Authenticated users on landing/login page always land on /dashboard
     if (isLoggedIn && user && (location.pathname === '/' || location.pathname === '/login')) {
-      const storedLast = sessionStorage.getItem('samadhan_lastVisitedPath');
-      let lastPath = storedLast;
-      if (
-        !lastPath ||
-        lastPath === '/unauthorized' || 
-        lastPath === '/login' || 
-        lastPath === '/' || 
-        lastPath === '/dashboard' ||
-        lastPath.startsWith('/super-admin') ||
-        lastPath.startsWith('/monitoring-cell') ||
-        lastPath.startsWith('/department') ||
-        lastPath.startsWith('/dealing-hand')
-      ) {
-        sessionStorage.removeItem('samadhan_lastVisitedPath');
-        lastPath = null;
-      }
-      const defaultDashboard = getRoleRedirectPath(user);
-      const redirectTo = (lastPath && lastPath !== '/') ? lastPath : defaultDashboard;
-      navigate(redirectTo, { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [isLoggedIn, user, isLoading, location.pathname, navigate]);
 

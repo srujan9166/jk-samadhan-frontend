@@ -48,8 +48,7 @@ export const AuthProvider = ({ children }) => {
 
     // Listen for global logout events dispatched by the Axios interceptor (on 401 errors)
     const handleGlobalLogout = () => {
-      setUser(null);
-      setIsLoggedIn(false);
+      logout();
     };
 
     window.addEventListener('auth-logout', handleGlobalLogout);
@@ -58,41 +57,44 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const login = async (identifier, password, otpCode = '') => {
-    const data = await authService.login(identifier, password, otpCode);
-    if (data.status === 'SUCCESS' && data.token) {
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      // Load user details
-      try {
-        const response = await axiosClient.get('/api/users/me');
-        setUser(response.data);
-        setIsLoggedIn(true);
-      } catch (err) {
-        // Fallback to profile returned in login if /me fails
-        setUser({
-          name: data.user.name,
-          email: data.user.email,
-          phone: data.user.phone,
-          district: data.user.district,
-          address: data.user.address,
-          role: data.user.role,
-          gender: data.user.gender,
-          dateOfBirth: data.user.dateOfBirth,
-          pincode: data.user.pincode,
-          state: data.user.state,
-        });
-        setIsLoggedIn(true);
-      }
-    }
-    return data;
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.clear();
+    setUser(null);
+    setIsLoggedIn(false);
   };
 
-  const logout = () => {
+  const login = async (identifier, password, otpCode = '') => {
+    // 1. Immediately wipe any prior session state to prevent stale user bleed-through
+    sessionStorage.clear();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
     setIsLoggedIn(false);
+
+    const data = await authService.login(identifier, password, otpCode);
+    if (data.status === 'SUCCESS' && data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // 2. Fetch fresh authenticated user profile
+      let resolvedUser = data.user;
+      try {
+        const response = await axiosClient.get('/api/users/me');
+        if (response.data) {
+          resolvedUser = response.data;
+          localStorage.setItem('user', JSON.stringify(resolvedUser));
+        }
+      } catch (err) {
+        console.warn('Could not fetch /api/users/me, falling back to login response user', err);
+      }
+
+      setUser(resolvedUser);
+      setIsLoggedIn(true);
+      return { ...data, user: resolvedUser };
+    }
+    return data;
   };
 
   return (

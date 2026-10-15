@@ -9,20 +9,19 @@ export default function Unauthorized() {
   const { user, logout, checkSession } = useAuth();
 
   useEffect(() => {
-    sessionStorage.removeItem('samadhan_lastVisitedPath');
+    sessionStorage.clear();
   }, []);
 
   const handleReturnHome = async () => {
-    sessionStorage.removeItem('samadhan_lastVisitedPath');
+    sessionStorage.clear();
     if (checkSession) {
       await checkSession();
     }
-    const destination = getRoleRedirectPath(user);
-    navigate(destination, { replace: true });
+    navigate('/dashboard', { replace: true });
   };
 
   const handleLogoutClick = () => {
-    sessionStorage.removeItem('samadhan_lastVisitedPath');
+    sessionStorage.clear();
     if (logout) logout();
     navigate('/', { replace: true });
   };

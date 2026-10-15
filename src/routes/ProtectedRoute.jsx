@@ -104,11 +104,11 @@ const ProtectedRoute = ({ allowedRoles, children }) => {
   }
 
   if (!isLoggedIn) {
-    return <Navigate to="/" state={{ from: location }} replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (!checkRoleMatch(user, allowedRoles)) {
-    return <Navigate to="/unauthorized" state={{ from: location }} replace />;
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children ? children : <Outlet />;

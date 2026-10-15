@@ -160,6 +160,18 @@ export const DASHBOARD_ROLE_CONFIG = {
     roleTitle: 'Super Admin Dashboard',
     basePath: '/superAdmin',
     defaultView: 'Super Admin Dashboard',
+    components: ['KPICards', 'Filters', 'GrievanceTable', 'Pagination'],
+    kpis: [
+      { key: 'total', title: 'Total Grievances', color: 'blue', filterValue: '' },
+      { key: 'inProgress', title: 'In Progress', color: 'teal', filterValue: 'In Progress' },
+      { key: 'resolved', title: 'Disposed', color: 'green', filterValue: 'Resolved' },
+      { key: 'pending', title: 'In Process', color: 'orange', filterValue: 'Pending' },
+      { key: 'rejected', title: 'Rejected', color: 'rose', filterValue: 'Rejected' },
+    ],
+    table: {
+      visibleColumns: ['sNo', 'grievanceId', 'citizen', 'phone', 'department', 'subject', 'district', 'status', 'createdDate', 'actions'],
+      actions: ['view', 'assign', 'forward']
+    },
     sidebar: [
       {
         type: 'item',
@@ -245,6 +257,18 @@ export const DASHBOARD_ROLE_CONFIG = {
   MONITORING_CELL: {
     roleTitle: 'Monitoring Cell Dashboard',
     defaultView: 'Analytical Dashboard',
+    components: ['KPICards', 'Filters', 'GrievanceTable', 'Pagination'],
+    kpis: [
+      { key: 'total', title: 'Total Grievances', color: 'blue', filterValue: '' },
+      { key: 'inProgress', title: 'In Progress', color: 'teal', filterValue: 'In Progress' },
+      { key: 'resolved', title: 'Disposed', color: 'green', filterValue: 'Resolved' },
+      { key: 'pending', title: 'In Process', color: 'orange', filterValue: 'Pending' },
+      { key: 'rejected', title: 'Rejected', color: 'rose', filterValue: 'Rejected' },
+    ],
+    table: {
+      visibleColumns: ['sNo', 'grievanceId', 'department', 'subject', 'district', 'status', 'createdDate', 'actions'],
+      actions: ['view']
+    },
     sidebar: [
       {
         type: 'item',
@@ -304,6 +328,18 @@ export const DASHBOARD_ROLE_CONFIG = {
   RMC: {
     roleTitle: 'RMC Head Dashboard',
     defaultView: 'RMC Head Dashboard',
+    components: ['KPICards', 'Filters', 'GrievanceTable', 'Pagination'],
+    kpis: [
+      { key: 'total', title: 'Total Raabita Grievances', color: 'blue', filterValue: '' },
+      { key: 'inProgress', title: 'In Progress', color: 'teal', filterValue: 'In Progress' },
+      { key: 'resolved', title: 'Disposed', color: 'green', filterValue: 'Resolved' },
+      { key: 'pending', title: 'In Process', color: 'orange', filterValue: 'Pending' },
+      { key: 'rejected', title: 'Rejected', color: 'rose', filterValue: 'Rejected' },
+    ],
+    table: {
+      visibleColumns: ['sNo', 'grievanceId', 'citizen', 'phone', 'category', 'subCategory', 'status', 'createdDate', 'actions'],
+      actions: ['view', 'process']
+    },
     sidebar: [
       {
         type: 'item',
@@ -345,8 +381,20 @@ export const DASHBOARD_ROLE_CONFIG = {
   },
 
   DM: {
-    roleTitle: 'DM Dashboard',
+    roleTitle: 'District Magistrate Dashboard',
     defaultView: 'DM Dashboard',
+    components: ['KPICards', 'Filters', 'GrievanceTable', 'Pagination'],
+    kpis: [
+      { key: 'total', title: 'District Grievances', color: 'blue', filterValue: '' },
+      { key: 'inProgress', title: 'In Progress', color: 'teal', filterValue: 'In Progress' },
+      { key: 'resolved', title: 'Disposed', color: 'green', filterValue: 'Resolved' },
+      { key: 'pending', title: 'In Process', color: 'orange', filterValue: 'Pending' },
+      { key: 'rejected', title: 'Rejected', color: 'rose', filterValue: 'Rejected' },
+    ],
+    table: {
+      visibleColumns: ['sNo', 'grievanceId', 'citizen', 'phone', 'department', 'category', 'status', 'createdDate', 'actions'],
+      actions: ['view', 'process']
+    },
     sidebar: [
       {
         type: 'item',
@@ -396,6 +444,18 @@ export const DASHBOARD_ROLE_CONFIG = {
   DEALING_HAND: {
     roleTitle: 'Dealing Hand Dashboard',
     defaultView: 'DealingHand Dashboard',
+    components: ['KPICards', 'Filters', 'GrievanceTable', 'Pagination'],
+    kpis: [
+      { key: 'total', title: 'Total Handled', color: 'blue', filterValue: '' },
+      { key: 'pending', title: 'Pending Entry', color: 'orange', filterValue: 'Pending' },
+      { key: 'resolved', title: 'Resolved', color: 'green', filterValue: 'Resolved' },
+      { key: 'rejected', title: 'Rejected', color: 'rose', filterValue: 'Rejected' },
+      { key: 'appealed', title: 'Appeals', color: 'purple', filterValue: 'Appealed' },
+    ],
+    table: {
+      visibleColumns: ['sNo', 'grievanceId', 'citizen', 'phone', 'category', 'department', 'status', 'createdDate', 'actions'],
+      actions: ['view']
+    },
     sidebar: [
       {
         type: 'item',
@@ -439,6 +499,18 @@ export const DASHBOARD_ROLE_CONFIG = {
   DEPARTMENT: {
     roleTitle: 'Department Nodal Dashboard',
     defaultView: 'Department Dashboard',
+    components: ['KPICards', 'Filters', 'GrievanceTable', 'Pagination'],
+    kpis: [
+      { key: 'total', title: 'Total Received', color: 'blue', filterValue: '' },
+      { key: 'pending', title: 'Pending Action', color: 'orange', filterValue: 'Pending' },
+      { key: 'resolved', title: 'Resolved', color: 'green', filterValue: 'Resolved' },
+      { key: 'rejected', title: 'Rejected', color: 'rose', filterValue: 'Rejected' },
+      { key: 'forwarded', title: 'Forwarded', color: 'purple', filterValue: 'Forwarded' },
+    ],
+    table: {
+      visibleColumns: ['sNo', 'grievanceId', 'category', 'department', 'subject', 'status', 'createdDate', 'actions'],
+      actions: ['view', 'process']
+    },
     sidebar: [
       {
         type: 'item',
@@ -470,6 +542,17 @@ export const DASHBOARD_ROLE_CONFIG = {
   APPELLATE: {
     roleTitle: 'Appellate Authority Dashboard',
     defaultView: 'Appellate Dashboard',
+    components: ['KPICards', 'Filters', 'GrievanceTable', 'Pagination'],
+    kpis: [
+      { key: 'total', title: 'Total Appeals', color: 'blue', filterValue: '' },
+      { key: 'pending', title: 'Hearing Scheduled', color: 'purple', filterValue: 'Hearing Scheduled' },
+      { key: 'resolved', title: 'Disposed / Resolved', color: 'green', filterValue: 'Resolved' },
+      { key: 'rejected', title: 'Rejected', color: 'rose', filterValue: 'Rejected' },
+    ],
+    table: {
+      visibleColumns: ['sNo', 'grievanceId', 'department', 'subject', 'status', 'createdDate', 'actions'],
+      actions: ['view']
+    },
     sidebar: [
       {
         type: 'item',
@@ -489,6 +572,18 @@ export const DASHBOARD_ROLE_CONFIG = {
   CITIZEN: {
     roleTitle: 'Citizen Portal',
     defaultView: 'Citizen Dashboard',
+    components: ['KPICards', 'Filters', 'GrievanceTable', 'Pagination'],
+    kpis: [
+      { key: 'total', title: 'My Grievances', color: 'blue', filterValue: '' },
+      { key: 'pending', title: 'In Progress', color: 'orange', filterValue: 'Pending' },
+      { key: 'resolved', title: 'Resolved', color: 'green', filterValue: 'Resolved' },
+      { key: 'appealed', title: 'Appealed', color: 'purple', filterValue: 'Appealed' },
+      { key: 'rejected', title: 'Rejected', color: 'rose', filterValue: 'Rejected' },
+    ],
+    table: {
+      visibleColumns: ['sNo', 'grievanceId', 'department', 'category', 'subject', 'status', 'createdDate', 'actions'],
+      actions: ['view']
+    },
     sidebar: [
       {
         type: 'item',

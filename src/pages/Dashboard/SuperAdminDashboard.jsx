@@ -88,7 +88,7 @@ const SUPPORTED_ROLES_MAP = {
   'ROLE_RmcHead': 'RMC Head'
 };
 
-export default function SuperAdminDashboard({ user, onLogout }) {
+export default function SuperAdminDashboard({ user, onLogout, normalizedRole, initialView }) {
   const userRole = (user?.role || '').toUpperCase();
   const userEmail = (user?.email || '').toLowerCase();
   const userUsername = (user?.username || '').toLowerCase();
@@ -225,17 +225,47 @@ export default function SuperAdminDashboard({ user, onLogout }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mappingMenuOpen, setMappingMenuOpen] = useState(true);
   const [misMenuOpen, setMisMenuOpen] = useState(true);
+
+  const getDefaultSidebarItem = () => {
+    if (initialView) return initialView;
+    if (isDealingHand) return 'DealingHand Dashboard';
+    if (isRaabitaHead) return 'RMC Head Dashboard';
+    if (isDM) return 'DM Dashboard';
+    if (isMonitoringCell) return 'Analytical Dashboard';
+    return 'Super Admin Dashboard';
+  };
+
+  const userKey = user?.id || user?.username || user?.email;
+  const userStorageKey = userKey ? `activeSidebarItem_${userKey}` : null;
+
   const [sidebarActiveItem, setSidebarActiveItem] = useState(() => {
-    const saved = sessionStorage.getItem('activeSidebarItem');
-    if (saved) return saved;
-    return isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard';
+    if (initialView) return initialView;
+    if (userStorageKey) {
+      const saved = sessionStorage.getItem(userStorageKey);
+      if (saved) {
+        if (isDM && ['Appeal Dashboard', 'Appeal MIS Report', 'Appellate Report', 'Create Department Nodal', 'Create users', 'Create Offices & Designation', 'Department Mapping', 'Citizen Registration List', 'Dealing Hand Grievances', 'Tree Dashboard', 'Advance Query Builder', 'Announcement / Notification List'].includes(saved)) {
+          return 'DM Dashboard';
+        }
+        if (isDealingHand && saved !== 'DealingHand Dashboard' && saved !== 'Grievance Entry') {
+          return 'DealingHand Dashboard';
+        }
+        return saved;
+      }
+    }
+    return getDefaultSidebarItem();
   });
 
   useEffect(() => {
-    if (sidebarActiveItem) {
-      sessionStorage.setItem('activeSidebarItem', sidebarActiveItem);
+    if (userStorageKey && sidebarActiveItem) {
+      sessionStorage.setItem(userStorageKey, sidebarActiveItem);
     }
-  }, [sidebarActiveItem]);
+  }, [sidebarActiveItem, userStorageKey]);
+
+  useEffect(() => {
+    if (initialView && initialView !== sidebarActiveItem) {
+      setSidebarActiveItem(initialView);
+    }
+  }, [initialView]);
 
   // Role Safety Guard: prevent restricted views for scoped roles
   useEffect(() => {
@@ -414,6 +444,7 @@ export default function SuperAdminDashboard({ user, onLogout }) {
     fwdToCPGRAM: '0',
     totalCPGRAM: '0',
     priorityFlagCount: '0',
+    remarkAdded: '0',
     loggedInUserFullName: '',
     userDepartment: ''
   });
@@ -531,27 +562,28 @@ export default function SuperAdminDashboard({ user, onLogout }) {
         setTotalPages(0);
       }
 
-      // Fetch dynamic stats from dashboard summary aggregation REST API
-      const statsData = await grievanceService.getSuperAdminDashboardSummary();
+      // Fetch dynamic stats from dashboard summary aggregation REST API with authenticated district scope
+      const statsData = await grievanceService.getSuperAdminDashboardSummary(targetDistrict || '');
       if (statsData) {
         setSummaryStats(statsData);
         setStats({
-          totalG: String(statsData.totalGrievances),
-          web: String(statsData.web),
-          App: String(statsData.app),
-          pending: String(statsData.pending),
-          resolved: String(statsData.resolved),
-          rejected: String(statsData.rejected),
-          totalClosed: String(statsData.resolved + statsData.rejected),
-          appealReceviedCount: String(statsData.appealReceivedCount),
-          forwarded: String(statsData.forwarded),
-          dNpCount: String(statsData.dnpCount),
-          cpgramClosed: String(statsData.cpgramClosed),
-          fwdToCPGRAM: String(statsData.fwdToCPGRAM),
-          totalCPGRAM: String(statsData.totalCPGRAM),
-          priorityFlagCount: String(statsData.escalated),
-          loggedInUserFullName: user?.name || user?.username || 'Super Admin',
-          userDepartment: 'All Departments'
+          totalG: String(statsData.totalGrievances || 0),
+          web: String(statsData.web || 0),
+          App: String(statsData.app || 0),
+          pending: String(statsData.pending || 0),
+          resolved: String(statsData.resolved || 0),
+          rejected: String(statsData.rejected || 0),
+          totalClosed: String((statsData.resolved || 0) + (statsData.rejected || 0)),
+          appealReceviedCount: String(statsData.appealReceivedCount || 0),
+          forwarded: String(statsData.forwarded || 0),
+          dNpCount: String(statsData.dnpCount || 0),
+          cpgramClosed: String(statsData.cpgramClosed || 0),
+          fwdToCPGRAM: String(statsData.fwdToCPGRAM || 0),
+          totalCPGRAM: String(statsData.totalCPGRAM || 0),
+          priorityFlagCount: String(statsData.escalated || 0),
+          remarkAdded: String(statsData.remarkAdded || 0),
+          loggedInUserFullName: user?.name || user?.username || (isDM ? 'District Magistrate' : 'Super Admin'),
+          userDepartment: isDM ? `District Administration (${user?.district || user?.districtName || 'Jammu'})` : 'All Departments'
         });
       }
     } catch (err) {
@@ -5166,79 +5198,131 @@ export default function SuperAdminDashboard({ user, onLogout }) {
                 </div>
               )}
 
-              {/* Shared Reusable Metric Stats Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* 1. Total Grievance Received */}
-                <KPICard
-                  title="Total Grievance Received"
-                  value={`Total ${stats.totalG}`}
-                  icon={PieChart}
-                  color="bg-[#1e6091]"
-                  badge={`Web ${stats.web} Mobile ${stats.App}`}
-                />
-
-                {/* 2. Pending with Departments */}
-                <KPICard
-                  title="Pending with Departments"
-                  value={stats.pending}
-                  icon={Calendar}
-                  color="bg-[#0096c7]"
-                />
-
-                {/* 3. Final Disposed */}
-                <KPICard
-                  title="Final Disposed"
-                  value={`Total ${stats.totalClosed}`}
-                  icon={ThumbsUp}
-                  color="bg-[#4ea8de]"
-                  badge={`Resolved ${stats.resolved} Rejected ${stats.rejected}`}
-                />
-
-                {/* 4. Appealed */}
-                <KPICard
-                  title="Appealed"
-                  value={stats.appealReceviedCount}
-                  icon={AlertCircle}
-                  color="bg-[#f3722c]"
-                />
-
-                {/* 5. Forwarded */}
-                <KPICard
-                  title="Forwarded"
-                  value={stats.forwarded}
-                  icon={Copy}
-                  color="bg-[#f9c74f] text-slate-800"
-                />
-
-                {/* 6. Does Not Pertain */}
-                <KPICard
-                  title="Does Not Pertain"
-                  value={stats.dNpCount}
-                  icon={Presentation}
-                  color="bg-[#7209b7]"
-                />
-
-                {/* 7. CPGRAMS (Super Admin only) */}
-                {isSuperAdmin && (
+              {/* Role-Specific Metric KPI Cards Grid using Shared Reusable KPICard Component */}
+              <div className={`grid grid-cols-1 sm:grid-cols-2 ${isDM ? 'lg:grid-cols-4 xl:grid-cols-7' : 'lg:grid-cols-4'} gap-4`}>
+                {(isDM ? [
+                  {
+                    id: 'dm-total',
+                    title: 'Total',
+                    value: stats.totalG,
+                    icon: PieChart,
+                    color: 'bg-[#1e6091]'
+                  },
+                  {
+                    id: 'dm-pending',
+                    title: 'Pending',
+                    value: stats.pending,
+                    icon: Calendar,
+                    color: 'bg-[#0096c7]'
+                  },
+                  {
+                    id: 'dm-resolved',
+                    title: 'Resolved',
+                    value: stats.resolved,
+                    icon: ThumbsUp,
+                    color: 'bg-[#4ea8de]'
+                  },
+                  {
+                    id: 'dm-rejected',
+                    title: 'Rejected',
+                    value: stats.rejected,
+                    icon: AlertCircle,
+                    color: 'bg-[#e63946]'
+                  },
+                  {
+                    id: 'dm-appealed',
+                    title: 'Appealed',
+                    value: stats.appealReceviedCount,
+                    icon: AlertCircle,
+                    color: 'bg-[#f3722c]'
+                  },
+                  {
+                    id: 'dm-dnp',
+                    title: 'Does Not Pertain',
+                    value: stats.dNpCount,
+                    icon: Presentation,
+                    color: 'bg-[#7209b7]'
+                  },
+                  {
+                    id: 'dm-remark',
+                    title: 'Remark Added',
+                    value: stats.remarkAdded,
+                    icon: Flag,
+                    color: 'bg-[#38b000]'
+                  }
+                ] : [
+                  {
+                    id: 'sa-total',
+                    title: 'Total Grievance Received',
+                    value: `Total ${stats.totalG}`,
+                    icon: PieChart,
+                    color: 'bg-[#1e6091]',
+                    badge: `Web ${stats.web} Mobile ${stats.App}`
+                  },
+                  {
+                    id: 'sa-pending',
+                    title: 'Pending with Departments',
+                    value: stats.pending,
+                    icon: Calendar,
+                    color: 'bg-[#0096c7]'
+                  },
+                  {
+                    id: 'sa-disposed',
+                    title: 'Final Disposed',
+                    value: `Total ${stats.totalClosed}`,
+                    icon: ThumbsUp,
+                    color: 'bg-[#4ea8de]',
+                    badge: `Resolved ${stats.resolved} Rejected ${stats.rejected}`
+                  },
+                  {
+                    id: 'sa-appealed',
+                    title: 'Appealed',
+                    value: stats.appealReceviedCount,
+                    icon: AlertCircle,
+                    color: 'bg-[#f3722c]'
+                  },
+                  {
+                    id: 'sa-forwarded',
+                    title: 'Forwarded',
+                    value: stats.forwarded,
+                    icon: Copy,
+                    color: 'bg-[#f9c74f] text-slate-800'
+                  },
+                  {
+                    id: 'sa-dnp',
+                    title: 'Does Not Pertain',
+                    value: stats.dNpCount,
+                    icon: Presentation,
+                    color: 'bg-[#7209b7]'
+                  },
+                  ...(isSuperAdmin ? [
+                    {
+                      id: 'sa-cpgram',
+                      title: 'CPGRAMS',
+                      value: `Total ${stats.totalCPGRAM}`,
+                      icon: Copy,
+                      color: 'bg-[#f94144]',
+                      badge: `Forwarded ${stats.fwdToCPGRAM} Closed ${stats.cpgramClosed}`
+                    },
+                    {
+                      id: 'sa-escalated',
+                      title: 'Escalation Figures',
+                      value: `Total ${stats.priorityFlagCount}`,
+                      icon: Flag,
+                      color: 'bg-[#43aa8b]',
+                      badge: `Beyond 7 Days ${Math.floor(Number(stats.priorityFlagCount) / 2)} Beyond 28 Days ${Number(stats.priorityFlagCount) - Math.floor(Number(stats.priorityFlagCount) / 2)}`
+                    }
+                  ] : [])
+                ]).map((kpi) => (
                   <KPICard
-                    title="CPGRAMS"
-                    value={`Total ${stats.totalCPGRAM}`}
-                    icon={Copy}
-                    color="bg-[#f94144]"
-                    badge={`Forwarded ${stats.fwdToCPGRAM} Closed ${stats.cpgramClosed}`}
+                    key={kpi.id}
+                    title={kpi.title}
+                    value={kpi.value}
+                    icon={kpi.icon}
+                    color={kpi.color}
+                    badge={kpi.badge}
                   />
-                )}
-
-                {/* 8. Escalation Figures (Super Admin only) */}
-                {isSuperAdmin && (
-                  <KPICard
-                    title="Escalation Figures"
-                    value={`Total ${stats.priorityFlagCount}`}
-                    icon={Flag}
-                    color="bg-[#43aa8b]"
-                    badge={`Beyond 7 Days ${Math.floor(Number(stats.priorityFlagCount) / 2)} Beyond 28 Days ${Number(stats.priorityFlagCount) - Math.floor(Number(stats.priorityFlagCount) / 2)}`}
-                  />
-                )}
+                ))}
               </div>
 
 

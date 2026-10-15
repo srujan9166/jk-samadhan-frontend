@@ -1,44 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ThumbsUp, 
-  ThumbsDown, 
-  AlertCircle, 
-  RefreshCw, 
-  ArrowRight,
-  Search,
-  Scale
-} from 'lucide-react';
 import emblemImg from '../../assets/emblem.png';
 import grievanceService from '../../services/grievanceService';
-import KPICardsGrid from '../../components/dashboard/KPICardsGrid';
+import KPICards from '../../components/dashboard/KPICards';
+import TableFilters from '../../components/dashboard/TableFilters';
+import GrievanceTable from '../../components/dashboard/GrievanceTable';
+import Pagination from '../../components/dashboard/Pagination';
+import DashboardLayout from '../../components/dashboard/DashboardLayout';
+import { DASHBOARD_ROLE_CONFIG } from '../../config/dashboardConfig';
 
+/**
+ * Appellate Authority Dashboard using Common Dashboard Components
+ */
 export default function AppellateDashboard({ user, onLogout }) {
   const navigate = useNavigate();
   const [appeals, setAppeals] = useState([]);
-  const [stats, setStats] = useState({ total: 0, pending: 0, resolved: 0, hearingScheduled: 0 });
+  const [stats, setStats] = useState({ total: 0, pending: 0, resolved: 0, rejected: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const roleConfig = DASHBOARD_ROLE_CONFIG.APPELLATE;
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       const data = await grievanceService.getGrievances();
-      const appealCases = data.filter(g => 
+      const appealCases = data.filter((g) => 
         g.windowType === 'Raabita' || 
         g.status?.toLowerCase() === 'appealed' ||
+        g.status?.toLowerCase() === 'hearing scheduled' ||
         g.psga === 'Yes'
       );
 
       setAppeals(appealCases);
       
       const total = appealCases.length;
-      const pending = appealCases.filter(g => g.status !== 'Resolved' && g.status !== 'Rejected').length;
-      const resolved = appealCases.filter(g => g.status === 'Resolved').length;
-      const hearingScheduled = appealCases.filter(g => g.status === 'Hearing Scheduled').length;
+      const pending = appealCases.filter((g) => g.status === 'Hearing Scheduled').length;
+      const resolved = appealCases.filter((g) => g.status === 'Resolved' || g.status === 'Disposed').length;
+      const rejected = appealCases.filter((g) => g.status === 'Rejected').length;
 
-      setStats({ total, pending, resolved, hearingScheduled });
+      setStats({ total, pending, resolved, rejected });
     } catch (err) {
       console.error('Error loading Appellate dashboard:', err);
     } finally {
@@ -47,158 +51,101 @@ export default function AppellateDashboard({ user, onLogout }) {
   };
 
   useEffect(() => {
-    let active = true;
-    const fetchAppeals = async () => {
-      setIsLoading(true);
-      try {
-        const data = await grievanceService.getGrievances();
-        const appealCases = data.filter(g => 
-          g.windowType === 'Raabita' || 
-          g.status?.toLowerCase() === 'appealed' ||
-          g.psga === 'Yes'
-        );
-        if (active) {
-          setAppeals(appealCases);
-          const total = appealCases.length;
-          const pending = appealCases.filter(g => g.status !== 'Resolved' && g.status !== 'Rejected').length;
-          const resolved = appealCases.filter(g => g.status === 'Resolved').length;
-          const hearingScheduled = appealCases.filter(g => g.status === 'Hearing Scheduled').length;
-          setStats({ total, pending, resolved, hearingScheduled });
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (active) setIsLoading(false);
-      }
-    };
-    fetchAppeals();
-    return () => { active = false; };
+    loadData();
   }, []);
 
-  const filtered = appeals.filter(g => {
-    const query = searchQuery.toLowerCase();
-    return (
-      g.id?.toString().includes(query) ||
-      g.department?.toLowerCase().includes(query) ||
-      g.grievanceCategory?.toLowerCase().includes(query) ||
-      g.description?.toLowerCase().includes(query)
-    );
+  const filtered = appeals.filter((g) => {
+    if (statusFilter && g.status?.toLowerCase() !== statusFilter.toLowerCase()) {
+      return false;
+    }
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return (
+        g.id?.toString().includes(query) ||
+        g.department?.toLowerCase().includes(query) ||
+        g.grievanceCategory?.toLowerCase().includes(query) ||
+        g.description?.toLowerCase().includes(query) ||
+        (g.submittedBy?.name || '').toLowerCase().includes(query)
+      );
+    }
+    return true;
   });
 
-  return (
-    <div className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans select-none animate-fadeIn text-xs">
-      {/* Dashboard Subheader */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex justify-between items-center shadow-xs">
-        <div className="flex items-center gap-3">
-          <img src={emblemImg} alt="Emblem" className="h-10 w-auto" />
-          <div className="text-left font-sans">
-            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 tracking-tight leading-none">Appellate Authority Dashboard</h2>
-            <span className="text-[10px] font-bold text-slate-450 dark:text-slate-400 uppercase tracking-widest block mt-1.5 font-sans">
-              Welcome, {user?.name || 'Appellate Officer'}
-            </span>
-          </div>
-        </div>
-        <button 
-          onClick={onLogout}
-          className="px-4 py-2 border border-red-200 hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-955/20 text-red-655 dark:text-red-400 font-bold rounded-lg text-xs transition-colors cursor-pointer"
-        >
-          Logout
-        </button>
-      </header>
+  const totalElements = filtered.length;
+  const totalPages = Math.ceil(totalElements / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedData = filtered.slice(startIndex, startIndex + pageSize);
 
-      {/* Main Grid */}
-      <main className="p-6 space-y-6 max-w-7xl mx-auto w-full text-left">
-        
-        {/* Reusable Metric widgets */}
-        <KPICardsGrid
-          columns="grid-cols-1 sm:grid-cols-4"
-          cards={[
-            { id: 'total', title: 'Total Appeals Received', value: stats.total, icon: Scale, color: 'blue' },
-            { id: 'pending', title: 'Pending Hearing', value: stats.pending, icon: AlertCircle, color: 'yellow' },
-            { id: 'resolved', title: 'Disposed Appeals', value: stats.resolved, icon: ThumbsUp, color: 'green' },
-            { id: 'hearing', title: 'Scheduled Hearings', value: stats.hearingScheduled, icon: RefreshCw, color: 'teal' },
-          ]}
+  const handleAction = (action, item) => {
+    if (item?.id) {
+      navigate(`/appeal/${item.id}`);
+    }
+  };
+
+  return (
+    <DashboardLayout
+      user={user}
+      role="APPELLATE"
+      roleTitle="Appellate Authority"
+      sidebarItems={roleConfig.sidebar || []}
+      activeSidebarItem="Appellate Dashboard"
+      onSelectSidebarItem={() => {}}
+      onLogout={onLogout}
+    >
+      <div className="p-6 space-y-6 max-w-7xl mx-auto w-full text-left">
+        {/* Reusable Common KPI Cards */}
+        <KPICards
+          config={roleConfig.kpis}
+          stats={stats}
+          activeFilter={statusFilter}
+          onCardClick={(val) => {
+            setStatusFilter(val === statusFilter ? '' : val);
+            setCurrentPage(1);
+          }}
+          columns="grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
         />
 
-        {/* DataTable Container */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
-            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 uppercase tracking-wider">Appeals Queue</h3>
-            <div className="flex items-center gap-3">
-              <div className="relative flex items-center">
-                <span className="text-slate-550 dark:text-slate-400 font-bold mr-2">Search:</span>
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 rounded px-2.5 py-1 text-xs outline-none focus:border-indigo-650 text-slate-850 dark:text-slate-100"
-                  placeholder="Filter cases..."
-                />
-              </div>
-              <button 
-                onClick={loadData}
-                className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-250 dark:border-slate-700 rounded-lg text-slate-655 dark:text-slate-300 cursor-pointer"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
+        {/* Reusable DataTable Container */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col overflow-hidden">
+          {/* Reusable Filters */}
+          <TableFilters
+            title="Appeals Queue"
+            pageSize={pageSize}
+            onPageSizeChange={(sz) => { setPageSize(sz); setCurrentPage(1); }}
+            searchQuery={searchQuery}
+            onSearchChange={(q) => { setSearchQuery(q); setCurrentPage(1); }}
+            placeholder="Search appeals by ID, department, citizen..."
+            onRefresh={loadData}
+            isRefreshing={isLoading}
+            statusFilter={statusFilter}
+            statusOptions={['Hearing Scheduled', 'Resolved', 'Rejected']}
+            onStatusFilterChange={(st) => { setStatusFilter(st); setCurrentPage(1); }}
+          />
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800 text-slate-450 dark:text-slate-400 uppercase tracking-widest text-[9px] font-extrabold select-none">
-                  <th className="px-6 py-3.5">Appeal ID</th>
-                  <th className="px-6 py-3.5">Appellant Name</th>
-                  <th className="px-6 py-3.5">Origin Grievance ID</th>
-                  <th className="px-6 py-3.5">Department</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-400 font-medium">Loading appeals...</td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-400 font-medium">No appeals listed in the queue.</td>
-                  </tr>
-                ) : (
-                  filtered.map((g) => (
-                    <tr key={g.id} className="border-b border-slate-150 dark:border-slate-855 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-slate-600 dark:text-slate-400">JK-APL-{100000 + g.id}</td>
-                      <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-300">{g.submittedBy?.name || 'Citizen'}</td>
-                      <td className="px-6 py-4 font-mono text-slate-500">JK-{100000 + g.id}</td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{g.department || 'N/A'}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          g.status === 'Resolved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900' :
-                          g.status === 'Hearing Scheduled' ? 'bg-indigo-50 text-indigo-650 border border-indigo-150 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900' :
-                          'bg-amber-50 text-amber-600 border border-amber-100 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900'
-                        }`}>
-                          {g.status || 'Pending'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <button 
-                          onClick={() => navigate(`/appeal/${g.id}`)}
-                          className="px-3 py-1 bg-[#164581] hover:opacity-95 text-white rounded text-[10px] font-bold inline-flex items-center gap-1 mx-auto cursor-pointer border-0 shadow-sm"
-                        >
-                          <span>Review Appeal</span>
-                          <ArrowRight className="h-3 w-3" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          {/* Reusable Common Grievance/Appeals Table */}
+          <GrievanceTable
+            data={paginatedData.map(g => ({
+              ...g,
+              grievanceId: `JK-APL-${100000 + g.id}`,
+              citizen: g.submittedBy?.name || g.citizenName || 'Citizen',
+              createdDate: g.createdAt || g.createdDate || g.date
+            }))}
+            config={roleConfig.table}
+            isLoading={isLoading}
+            onAction={handleAction}
+            startIndex={startIndex}
+          />
+
+          {/* Reusable Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
-
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

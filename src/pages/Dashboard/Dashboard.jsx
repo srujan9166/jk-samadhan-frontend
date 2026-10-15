@@ -5,17 +5,18 @@ import SuperAdminDashboard from './SuperAdminDashboard';
 import CitizenDashboard from './CitizenDashboard';
 import DeptDashboard from './DeptDashboard';
 import AppellateDashboard from './AppellateDashboard';
+import DealingHandDashboard from './DealingHandDashboard';
 
 /**
- * Common Authenticated Dashboard Component
+ * Common Authenticated Dashboard Component / DashboardRenderer
  * 
  * Flow:
  * Login -> Authenticated User -> Load User Context -> Single /dashboard -> Role-driven Renderer
  * 
- * Serves Super Admin, RMC Head & Users, DM, Monitoring Cell, Dealing Hand,
- * Department Officers, Appellate Authority, and Citizens from the same route.
+ * Dynamically mounts and renders dashboard components strictly according to the newly
+ * authenticated user's normalized role.
  */
-export default function Dashboard(props) {
+export function DashboardRenderer(props) {
   const { user, logout, isLoading } = useAuth();
 
   if (isLoading) {
@@ -32,21 +33,37 @@ export default function Dashboard(props) {
   }
 
   const role = normalizeRole(user);
+  // Strict session key isolation: ensures clean unmount/remount across users & roles
+  const userKey = `${user?.id || user?.username || user?.email || 'anon'}_${role}`;
+
+  // Dealing Hand Workflow
+  if (role === 'DEALING_HAND') {
+    return (
+      <DealingHandDashboard
+        key={userKey}
+        user={user}
+        onLogout={logout}
+        normalizedRole={role}
+        {...props}
+      />
+    );
+  }
 
   // Administrative, Oversight, District, and Operations Roles
-  // SuperAdmin, Monitoring Cell, RMC, DM, and Dealing Hand utilize the unified extensible dashboard
+  // SuperAdmin, Monitoring Cell, RMC, and DM utilize the unified extensible dashboard
   if (
     role === 'SUPERADMIN' ||
     role === 'MONITORING_CELL' ||
     role === 'RMC' ||
-    role === 'DM' ||
-    role === 'DEALING_HAND'
+    role === 'DM'
   ) {
     return (
       <SuperAdminDashboard 
+        key={userKey}
         user={user} 
         onLogout={logout} 
         normalizedRole={role}
+        initialView={props.initialView}
         {...props} 
       />
     );
@@ -56,8 +73,10 @@ export default function Dashboard(props) {
   if (role === 'DEPARTMENT') {
     return (
       <DeptDashboard 
+        key={userKey}
         user={user} 
         onLogout={logout} 
+        normalizedRole={role}
         {...props} 
       />
     );
@@ -67,8 +86,10 @@ export default function Dashboard(props) {
   if (role === 'APPELLATE') {
     return (
       <AppellateDashboard 
+        key={userKey}
         user={user} 
         onLogout={logout} 
+        normalizedRole={role}
         {...props} 
       />
     );
@@ -77,9 +98,13 @@ export default function Dashboard(props) {
   // Citizen Role: Integrated into the common dashboard architecture
   return (
     <CitizenDashboard 
+      key={userKey}
       user={user} 
       onLogout={logout} 
+      normalizedRole={role}
       {...props} 
     />
   );
 }
+
+export default DashboardRenderer;

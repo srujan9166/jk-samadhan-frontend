@@ -27,7 +27,12 @@ import {
 import emblemImg from '../../assets/emblem.png';
 import logoImg from '../../assets/logo.png';
 import GISMapModal from '../../components/modals/GISMapModal';
-import KPICardsGrid from '../../components/dashboard/KPICardsGrid';
+import KPICards from '../../components/dashboard/KPICards';
+import TableFilters from '../../components/dashboard/TableFilters';
+import GrievanceTable from '../../components/dashboard/GrievanceTable';
+import Pagination from '../../components/dashboard/Pagination';
+import DashboardLayout from '../../components/dashboard/DashboardLayout';
+import { DASHBOARD_ROLE_CONFIG } from '../../config/dashboardConfig';
 
 export default function CitizenDashboard({
   user,
@@ -38,11 +43,33 @@ export default function CitizenDashboard({
   onLogout,
   onLmsClick
 }) {
+  const roleConfig = DASHBOARD_ROLE_CONFIG.CITIZEN;
   const [filterType, setFilterType] = useState('All'); // 'All', 'Web', 'Mobile'
+  const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const handleSidebarSelect = (itemId) => {
+    if (itemId === 'Citizen Lodge Grievance' || itemId === 'Lodge Grievance') {
+      setActiveView('lodge_grievance');
+      setIsGrievanceAgreed(false);
+      setHasAgreed(false);
+    } else if (itemId === 'Citizen Lodge Appeal' || itemId === 'Lodge Appeal') {
+      setActiveView('lodge_appeal');
+      setIsGrievanceAgreed(false);
+      setHasAgreed(false);
+    } else {
+      setActiveView('dashboard');
+    }
+  };
+
+  const getActiveSidebarId = () => {
+    if (activeView === 'lodge_grievance') return 'Citizen Lodge Grievance';
+    if (activeView === 'lodge_appeal') return 'Citizen Lodge Appeal';
+    return 'Citizen Dashboard';
+  };
 
   useEffect(() => {
     document.title = "JK Samadhan 3.0 - Citizen Dashboard";
@@ -732,6 +759,9 @@ export default function CitizenDashboard({
     if (filterType !== 'All' && source.toLowerCase() !== filterType.toLowerCase()) {
       return false;
     }
+    if (statusFilter && item.status?.toLowerCase() !== statusFilter.toLowerCase()) {
+      return false;
+    }
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       return (
@@ -763,271 +793,46 @@ export default function CitizenDashboard({
       <span className="text-[6px] leading-none mb-0.5">▲</span>
       <span className="text-[6px] leading-none">▼</span>
     </span>
-  );
+  );  return (
+    <DashboardLayout
+      user={user}
+      role="CITIZEN"
+      roleTitle="Citizen Portal"
+      sidebarItems={roleConfig.sidebar}
+      activeSidebarItem={getActiveSidebarId()}
+      onSelectSidebarItem={handleSidebarSelect}
+      onLogout={onLogout}
+      onLmsClick={onLmsClick}
+    >
+      <div className="flex-1 flex flex-col p-6 space-y-6 overflow-x-hidden pb-16">
 
-  return (
-    <div className="min-h-screen flex flex-col bg-[#f4f7f9] text-slate-800 font-sans">
-
-      {/* ── Top Header Redesigned ── */}
-      <header className="h-16 bg-white border-b border-slate-200 shadow-sm flex items-center justify-between px-4 z-45 sticky top-0 shrink-0">
-        {/* Left: Brand logos and hamburger toggle */}
-        <div className="flex items-center gap-3">
-          <img src={emblemImg} className="h-9 w-auto object-contain shrink-0" alt="Emblem" />
-
-          <div className="flex flex-col text-left">
-            <div className="flex items-center gap-1">
-              <span className="text-sm font-black text-[#164581] leading-none">JK Samadhan</span>
-              <span className="bg-[#f06e30] text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full scale-90">3.0</span>
-            </div>
-            <span className="text-[7.5px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 leading-none">Government of Jammu & Kashmir</span>
-          </div>
-
-          <div className="h-6 w-px bg-slate-200 mx-1.5 hidden sm:block"></div>
-
-          <div className="flex items-center gap-1.5 z-10 hidden sm:flex">
-            <div className="p-0.5 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-lg text-white">
-              <svg viewBox="0 0 100 100" className="w-5 h-5 text-white fill-none stroke-current" strokeWidth="6">
-                <circle cx="50" cy="50" r="12" />
-                <circle cx="20" cy="40" r="7" />
-                <circle cx="45" cy="18" r="7" />
-                <circle cx="80" cy="35" r="7" />
-                <circle cx="70" cy="75" r="7" />
-                <circle cx="30" cy="75" r="7" />
-                <line x1="26" y1="42" x2="39" y2="47" />
-                <line x1="48" y1="25" x2="50" y2="38" />
-                <line x1="73" y1="38" x2="61" y2="46" />
-                <line x1="66" y1="70" x2="57" y2="59" />
-                <line x1="34" y1="70" x2="43" y2="59" />
-              </svg>
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="font-display font-extrabold text-xs tracking-tight uppercase leading-none text-[#164581]">JK Raabita</span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer ml-1.5 sm:ml-3 border-0 bg-transparent"
-            aria-label="Toggle Sidebar"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Right: Dropdowns and User profile */}
-        <div className="flex items-center gap-2">
-          {/* LMS Videos */}
-          <div className="relative" ref={lmsRef}>
-            <button
-              onClick={() => {
-                setIsLmsDropdownOpen(!isLmsDropdownOpen);
-                setIsManualDropdownOpen(false);
-                setIsLangDropdownOpen(false);
-                setIsProfileDropdownOpen(false);
-              }}
-              className="flex items-center gap-1 bg-[#1f2e42] hover:bg-[#182535] text-white text-[11px] font-bold px-3 py-1.5 rounded-full cursor-pointer transition-colors shadow-sm select-none border-0"
-            >
-              <div className="flex items-center justify-center bg-red-600 rounded-full p-0.5 shrink-0">
-                <Play className="h-2 w-2 text-white fill-current translate-x-[0.5px]" />
-              </div>
-              <span>LMS Videos</span>
-              <ChevronDown className="h-3 w-3 opacity-80" />
-            </button>
-            {isLmsDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-44 bg-white border border-slate-200 rounded-md shadow-lg py-1 z-50 text-left">
-                <button
-                  onClick={() => { setIsLmsDropdownOpen(false); onLmsClick('login'); }}
-                  className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0"
-                >
-                  How to Login
-                </button>
-                <button
-                  onClick={() => { setIsLmsDropdownOpen(false); onLmsClick('register'); }}
-                  className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0"
-                >
-                  How to Register
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* User Manual */}
-          <div className="relative" ref={manualRef}>
-            <button
-              onClick={() => {
-                setIsManualDropdownOpen(!isManualDropdownOpen);
-                setIsLmsDropdownOpen(false);
-                setIsLangDropdownOpen(false);
-                setIsProfileDropdownOpen(false);
-              }}
-              className="flex items-center gap-1.5 bg-[#1f2e42] hover:bg-[#182535] text-white text-[11px] font-bold px-3 py-1.5 rounded-full cursor-pointer transition-colors shadow-sm select-none border-0"
-            >
-              <span>User Manual</span>
-              <ChevronDown className="h-3 w-3 opacity-80" />
-            </button>
-            {isManualDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-48 bg-white border border-slate-200 rounded-md shadow-lg py-1.5 z-50 text-left">
-                <button
-                  onClick={() => { alert('Downloading Citizen User Manual PDF (Mock)'); setIsManualDropdownOpen(false); }}
-                  className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0"
-                >
-                  Citizen User Manual
-                </button>
-                <button
-                  onClick={() => { alert('Downloading Officer User Manual PDF (Mock)'); setIsManualDropdownOpen(false); }}
-                  className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0"
-                >
-                  Officer User Manual
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Language */}
-          <div className="relative" ref={langRef}>
-            <button
-              onClick={() => {
-                setIsLangDropdownOpen(!isLangDropdownOpen);
-                setIsLmsDropdownOpen(false);
-                setIsManualDropdownOpen(false);
-                setIsProfileDropdownOpen(false);
-              }}
-              className="flex items-center gap-1.5 bg-[#1f2e42] hover:bg-[#182535] text-white text-[11px] font-bold px-3 py-1.5 rounded-full cursor-pointer transition-colors shadow-sm select-none border-0"
-            >
-              <span>Language</span>
-              <ChevronDown className="h-3 w-3 opacity-80" />
-            </button>
-            {isLangDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-32 bg-white border border-slate-200 rounded-md shadow-lg py-1.5 z-50 text-left">
-                <button onClick={() => setIsLangDropdownOpen(false)} className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0">English</button>
-                <button onClick={() => setIsLangDropdownOpen(false)} className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0">Urdu</button>
-                <button onClick={() => setIsLangDropdownOpen(false)} className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer bg-transparent border-0">Hindi</button>
-              </div>
-            )}
-          </div>
-
-          {/* Profile Dropdown */}
-          <div className="relative border-l border-slate-200 pl-2 ml-1" ref={profileRef}>
-            <button
-              onClick={() => {
-                setIsProfileDropdownOpen(!isProfileDropdownOpen);
-                setIsLmsDropdownOpen(false);
-                setIsManualDropdownOpen(false);
-                setIsLangDropdownOpen(false);
-              }}
-              className="flex items-center gap-1.5 text-slate-700 hover:text-slate-900 text-xs font-bold py-1 transition-colors cursor-pointer select-none border-0 bg-transparent"
-            >
-              <div className="w-7 h-7 rounded-full bg-slate-200 text-[#164581] flex items-center justify-center font-bold border border-slate-350 shrink-0">
-                <User className="h-4 w-4" />
-              </div>
-              <span className="hidden md:inline max-w-[130px] truncate font-sans text-slate-700">{user ? (user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim()) : 'sai srujan rallabandi'}</span>
-              <ChevronDown className="h-3.5 w-3.5 opacity-60 text-slate-650" />
-            </button>
-            {isProfileDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 w-48 bg-white border border-slate-200 rounded-md shadow-lg py-1.5 z-50 text-left font-sans">
-                <div className="px-4 py-2 border-b border-slate-100">
-                  <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider">Logged in as</span>
-                  <span className="block text-xs font-bold text-slate-800 truncate">{user?.email || 'sai@samadhan.jk.gov.in'}</span>
-                </div>
-                <button
-                  onClick={() => { setIsProfileDropdownOpen(false); onLogout(); }}
-                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-650 hover:bg-red-50 cursor-pointer bg-transparent border-0 flex items-center gap-1.5"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                  <span>Logout</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* ── Outer Body Layout Row ── */}
-      <div className="flex-1 flex flex-col md:flex-row relative min-h-[calc(100vh-64px)]">
-
-        {/* ── Left Sidebar: Dark Themed navigation ── */}
-        <aside className={`bg-[#1f2e42] text-white flex flex-col justify-between shrink-0 select-none transition-all duration-300 z-30 ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden'
-          } fixed md:relative h-[calc(100vh-64px)] md:h-auto`}>
-          <div className="flex flex-col">
+        {/* Breadcrumb Header & Notification Bell */}
+        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-4">
+          <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
             {activeView === 'dashboard' ? (
-              <nav className="p-4 space-y-1.5">
-                <button
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold transition-all bg-[#eae8ff] text-[#5b21b6] cursor-pointer border-0"
-                >
-                  <LayoutDashboard className="h-4.5 w-4.5" />
-                  <span>User Dashboard</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveView('lodge_grievance');
-                    setIsGrievanceAgreed(false);
-                    setHasAgreed(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all cursor-pointer bg-transparent border-0"
-                >
-                  <FileText className="h-4.5 w-4.5" />
-                  <span>Lodge Grievance</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveView('lodge_appeal');
-                    setIsGrievanceAgreed(false);
-                    setHasAgreed(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all cursor-pointer bg-transparent border-0"
-                >
-                  <FileCheck2 className="h-4.5 w-4.5" />
-                  <span>Lodge Appeal</span>
-                </button>
-              </nav>
+              <>
+                Dashboard <span className="text-slate-350 font-normal">|</span> <span className="text-xs font-semibold text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded">Citizen Dashboard</span>
+              </>
             ) : (
-              <div className="p-4">
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    if (isGrievanceAgreed) {
-                      setIsGrievanceAgreed(false);
-                    } else {
-                      setActiveView('dashboard');
-                    }
-                  }}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-[#0f172a] hover:bg-slate-900 text-white rounded-full text-xs font-bold transition-all border-0 cursor-pointer shadow-md inline-flex"
+                  type="button"
+                  onClick={() => setActiveView('dashboard')}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded border border-slate-300 dark:border-slate-700 cursor-pointer shadow-xs transition-colors"
                 >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span>Back</span>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <span>Back to Dashboard</span>
                 </button>
+                <span className="text-slate-350 font-normal">|</span>
+                <span className="text-xs font-semibold text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded">
+                  {activeView === 'acknowledgment' ? 'Acknowledgment Slip' : activeView === 'lodge_appeal' ? 'Lodge Appeal' : 'Lodge Grievance'}
+                </span>
               </div>
             )}
-          </div>
+          </h2>
 
-          {/* Sidebar Footer */}
-          <div className="p-4 flex items-center justify-center">
-            <div className="px-4 py-1.5 bg-slate-900/60 rounded-full text-xs text-slate-300 font-mono">
-              ver: v2.7.13
-            </div>
-          </div>
-        </aside>
-
-        {/* ── Main Content Area ── */}
-        <main className="flex-1 flex flex-col p-6 space-y-6 overflow-x-hidden pb-16">
-
-          {/* Breadcrumb Header & Notification Bell */}
-          <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-            <h2 className="text-xl font-bold tracking-tight text-slate-800 flex items-center gap-2">
-              {activeView === 'dashboard' ? (
-                <>
-                  Dashboard <span className="text-slate-350 font-normal">|</span> <span className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded">User Dashboard</span>
-                </>
-              ) : (
-                <>
-                  Lodge Relevance <span className="text-slate-350 font-normal">|</span> <span className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded">
-                    {activeView === 'acknowledgment' ? 'Acknowledgment' : activeView === 'lodge_appeal' ? 'Lodge Appeal' : 'Lodge Grievance'}
-                  </span>
-                </>
-              )}
-            </h2>
-
-            <div className="flex items-center gap-3">
-              {activeView === 'dashboard' && (
+          <div className="flex items-center gap-3">
+            {activeView === 'dashboard' && (
                 <button
                   onClick={handleLoadDemoData}
                   className="px-3.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
@@ -1051,220 +856,62 @@ export default function CitizenDashboard({
 
           {activeView === 'dashboard' ? (
             <>
-              {/* Reusable Stats Metrics Row */}
-              <KPICardsGrid
-                cards={[
-                  { id: 'total', title: 'Total Grievances Submitted', value: totalCount, icon: PieChart, color: 'blue' },
-                  { id: 'pending', title: 'Pending with Department', value: pendingCount, icon: Calendar, color: 'teal' },
-                  { id: 'resolved', title: 'Resolved', value: resolvedCount, icon: ThumbsUp, color: 'green' },
-                  { id: 'appealed', title: 'Appealed', value: appealedCount, icon: AlertCircle, color: 'orange' },
-                  { id: 'rejected', title: 'Rejected', value: rejectedCount, icon: ClipboardList, color: 'yellow' },
-                ]}
+              {/* Common Role-Configured KPI Cards */}
+              <KPICards
+                config={roleConfig.kpis}
+                stats={{
+                  total: totalCount,
+                  pending: pendingCount,
+                  resolved: resolvedCount,
+                  appealed: appealedCount,
+                  rejected: rejectedCount,
+                }}
+                activeFilter={statusFilter}
+                onCardClick={(val) => {
+                  setStatusFilter(val === statusFilter ? '' : val);
+                  setCurrentPage(1);
+                }}
+                columns="grid-cols-1 sm:grid-cols-2 lg:grid-cols-5"
               />
 
-              {/* Grievances List Container */}
-              <div className="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
+              {/* Common Table & Filter Container */}
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden">
+                <TableFilters
+                  title="List of Grievances"
+                  filterType={filterType}
+                  onFilterTypeChange={(ft) => { setFilterType(ft); setCurrentPage(1); }}
+                  filterOptions={['All', 'Web', 'Mobile']}
+                  pageSize={pageSize}
+                  onPageSizeChange={(sz) => { setPageSize(sz); setCurrentPage(1); }}
+                  searchQuery={searchQuery}
+                  onSearchChange={(q) => { setSearchQuery(q); setCurrentPage(1); }}
+                  placeholder="Search grievances..."
+                  onExportExcel={() => alert('Exporting to Excel (Mock)')}
+                  onExportPdf={() => alert('Exporting to PDF (Mock)')}
+                />
 
-                {/* List Card Header */}
-                <div className="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-                  <h3 className="text-base font-bold text-slate-800 uppercase tracking-wide">
-                    List of Grievances
-                  </h3>
+                <GrievanceTable
+                  data={paginatedGrievances.map((item) => ({
+                    ...item,
+                    department: getDeptName(item.department)
+                  }))}
+                  config={roleConfig.table}
+                  isLoading={false}
+                  onAction={(action, item) => {
+                    if (action === 'view') {
+                      alert(`Details:\n\nReference: ${item.refNum || item.uniqId || item.id}\nDepartment: ${getDeptName(item.department)}\nCategory: ${item.category}\nSubject: ${item.subject || item.description}\nDescription: ${item.description}\nDate: ${item.date}\nStatus: ${item.status}`);
+                    }
+                  }}
+                  startIndex={startIndex}
+                />
 
-                  <div className="flex items-center gap-4">
-                    {/* Center: Filter option as bordered legend box */}
-                    <fieldset className="border border-indigo-400 rounded-lg px-4 py-1.5 text-xs">
-                      <legend className="text-indigo-600 font-bold px-1.5 text-[9px] uppercase tracking-wider">Filter</legend>
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none">
-                          <input
-                            type="radio"
-                            name="filterSource"
-                            checked={filterType === 'All'}
-                            onChange={() => { setFilterType('All'); setCurrentPage(1); }}
-                            className="accent-indigo-650 h-3.5 w-3.5 cursor-pointer"
-                          />
-                          <span>All</span>
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none">
-                          <input
-                            type="radio"
-                            name="filterSource"
-                            checked={filterType === 'Web'}
-                            onChange={() => { setFilterType('Web'); setCurrentPage(1); }}
-                            className="accent-indigo-650 h-3.5 w-3.5 cursor-pointer"
-                          />
-                          <span>Web</span>
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer font-bold text-slate-700 select-none">
-                          <input
-                            type="radio"
-                            name="filterSource"
-                            checked={filterType === 'Mobile'}
-                            onChange={() => { setFilterType('Mobile'); setCurrentPage(1); }}
-                            className="accent-indigo-650 h-3.5 w-3.5 cursor-pointer"
-                          />
-                          <span>Mobile</span>
-                        </label>
-                      </div>
-                    </fieldset>
-
-                    {/* Right: Export buttons in capsule format */}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => alert('Exporting to Excel (Mock)')}
-                        className="w-9 h-9 rounded-full bg-[#0f2d59] text-white flex items-center justify-center hover:opacity-90 transition-all cursor-pointer border-0 shadow-sm"
-                        title="Export as XLS"
-                      >
-                        <svg viewBox="0 0 24 24" className="w-4.5 h-4.5 fill-current text-white">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" opacity="0.2" />
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM13 9V3.5L18.5 9H13z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          <text x="7" y="18" fontSize="6.5" fontWeight="bold" fill="currentColor" fontFamily="monospace">XLS</text>
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => alert('Exporting to PDF (Mock)')}
-                        className="w-9 h-9 rounded-full bg-[#18181b] text-white flex items-center justify-center hover:opacity-90 transition-all cursor-pointer border-0 shadow-sm"
-                        title="Export as PDF"
-                      >
-                        <svg viewBox="0 0 24 24" className="w-4.5 h-4.5 fill-current text-white">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" opacity="0.2" />
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM13 9V3.5L18.5 9H13z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          <text x="7" y="18" fontSize="6.5" fontWeight="bold" fill="currentColor" fontFamily="monospace">PDF</text>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Table Operations: Entries select & Search filter */}
-                <div className="px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50 border-b border-slate-200">
-                  {/* Page Size select */}
-                  <div className="flex items-center gap-2 text-xs text-slate-650 font-semibold">
-                    <span>Show</span>
-                    <select
-                      value={pageSize}
-                      onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                      className="border border-slate-300 rounded bg-white px-2 py-1 outline-none font-bold cursor-pointer"
-                    >
-                      <option value={5}>5</option>
-                      <option value={10}>10</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                    </select>
-                    <span>entries</span>
-                  </div>
-
-                  {/* Table Search Input */}
-                  <div className="relative w-full sm:w-64 flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-650 select-none">Search:</span>
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                        className="px-3 py-1.5 w-full border border-slate-300 rounded-md text-xs outline-none bg-white focus:border-[#164581] transition-all"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Grid Border HTML Table */}
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200 border-collapse">
-                    <thead>
-                      <tr className="bg-[#164581] text-white">
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border border-slate-300 whitespace-nowrap select-none">
-                          S. No. <SortIndicator />
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border border-slate-300 whitespace-nowrap select-none">
-                          Grievance ID <SortIndicator />
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border border-slate-300 whitespace-nowrap select-none">
-                          Department <SortIndicator />
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border border-slate-300 whitespace-nowrap select-none">
-                          Main category <SortIndicator />
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border border-slate-300 whitespace-nowrap select-none">
-                          Date <SortIndicator />
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border border-slate-300 whitespace-nowrap select-none">
-                          Status <SortIndicator />
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider border border-slate-300 whitespace-nowrap select-none">
-                          Action <SortIndicator />
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-slate-200 text-xs font-medium">
-                      {paginatedGrievances.length > 0 ? (
-                        paginatedGrievances.map((item, index) => (
-                          <tr key={item.refNum} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-4 py-3 border border-slate-200 text-slate-500 font-mono font-bold text-center">
-                              {startIndex + index + 1}
-                            </td>
-                            <td className="px-4 py-3 border border-slate-200 text-[#164581] font-bold font-mono whitespace-nowrap">
-                              {item.refNum}
-                            </td>
-                            <td className="px-4 py-3 border border-slate-200 text-slate-700 max-w-[200px] truncate" title={getDeptName(item.department)}>
-                              {getDeptName(item.department)}
-                            </td>
-                            <td className="px-4 py-3 border border-slate-200 text-slate-700 whitespace-nowrap">
-                              {item.category}
-                            </td>
-                            <td className="px-4 py-3 border border-slate-200 text-slate-600 font-mono">
-                              {item.date}
-                            </td>
-                            <td className="px-4 py-3 border border-slate-200 whitespace-nowrap">
-                              {getStatusBadge(item.status)}
-                            </td>
-                            <td className="px-4 py-3 border border-slate-200 text-center whitespace-nowrap">
-                              <button
-                                onClick={() => alert(`Details:\n\nReference: ${item.refNum}\nDepartment: ${getDeptName(item.department)}\nCategory: ${item.category}\nSubject: ${item.subject}\nDescription: ${item.description}\nDate: ${item.date}\nStatus: ${item.status}`)}
-                                className="px-2.5 py-1 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded transition-all bg-white cursor-pointer font-bold"
-                              >
-                                View Details
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-slate-500 border border-slate-200 bg-[#f1f5f9] font-medium text-sm">
-                            No data available in table
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Table Pagination Footer */}
-                <div className="px-6 py-4 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-semibold text-slate-550 bg-slate-50/50 font-verdana">
-                  <div>
-                    Showing {totalItems === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + pageSize, totalItems)} of {totalItems} entries
-                  </div>
-
-                  {/* Pagination Actions */}
-                  <div className="flex items-center gap-4 select-none">
-                    <button
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage(prev => prev - 1)}
-                      className="text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-xs font-bold bg-transparent border-0 outline-none"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage(prev => prev + 1)}
-                      className="text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-xs font-bold bg-transparent border-0 outline-none"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalElements={totalItems}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                />
               </div>
             </>
           ) : activeView === 'acknowledgment' ? (
@@ -1921,8 +1568,6 @@ export default function CitizenDashboard({
             </div>
           )}
 
-        </main>
-
       </div>
 
       <GISMapModal
@@ -1931,12 +1576,6 @@ export default function CitizenDashboard({
         onLocationSelect={handleLocationSelected}
         currentDistrictName={pertainDistrict}
       />
-
-      {/* Copy-Right Footer Block */}
-      <footer className="w-full bg-[#e2e8f0] text-slate-500 border-t border-slate-300 py-3.5 text-center text-[11px] font-semibold select-none z-30 shrink-0">
-        © Copyright Ministry of Electronics and Information Technology. All Rights Reserved
-      </footer>
-
-    </div>
+    </DashboardLayout>
   );
 }
