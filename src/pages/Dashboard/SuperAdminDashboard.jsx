@@ -67,7 +67,9 @@ import DepartmentUserListReport from '../Reports/DepartmentUserListReport';
 import StatusWiseReport from '../Reports/StatusWiseReport';
 import TreeDashboard from '../Analytics/TreeDashboard';
 import PendencyReport from '../Reports/PendencyReport';
+import AgeAnalysisReport from '../Reports/AgeAnalysisReport';
 import FeedbackAnalysis from '../Analytics/FeedbackAnalysis';
+import NewFeedbackAnalysis from '../Analytics/NewFeedbackAnalysis';
 import DistrictWiseReport from '../Reports/DistrictWiseReport';
 import AverageTimeReport from '../Reports/AverageTimeReport';
 import AppellateReport from '../Reports/AppellateReport';
@@ -98,6 +100,15 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
   const isRaabitaHead = userRole === 'ROLE_RAABITA_HEAD' || userRole === 'RAABITA_HEAD' || userRole === 'ROLE_RMC_HEAD' || userRole === 'RMC_HEAD' || userRole === 'RAABITAHEAD' || userRole === 'RMCHEAD' || userRole.includes('RAABITA') || userRole.includes('RMC') || userEmail.includes('raabita') || userUsername.includes('raabita') || userUsername.includes('rmc');
   const isDealingHand = userRole === 'DEALINGHAND' || userRole === 'ROLE_DEALINGHAND' || userRole === 'DEALING_HAND' || userRole === 'ROLE_DEALING_HAND' || userRole === 'DEALINGHANDHEAD' || userRole === 'DEALING_HAND_HEAD' || userRole === 'ROLE_DEALINGHAND_HEAD' || userRole.includes('DEALING') || userEmail.includes('dealing') || userUsername.includes('dealing');
   const isDM = (userRole === 'DM' || userRole === 'ROLE_DM' || userRole === 'ROLE_DISTRICT_MAGISTRATE') && !isRaabitaHead && !isDealingHand;
+  const isDepartmentNodal = normalizedRole === 'DEPARTMENT' || (!isSuperAdmin && !isMonitoringCell && !isRaabitaHead && !isDealingHand && !isDM && (user?.department || user?.departmentName || userRole.includes('DEPT') || userRole.includes('ADMIN') || userRole.includes('OFFICER') || userEmail.includes('admin') || userUsername.includes('admin')));
+  const userDept = user?.department || user?.departmentName || '';
+
+  const [deptActiveTab, setDeptActiveTab] = useState('Within/Intra Department'); // 'Within/Intra Department', 'Outside/Inter Department', 'CPGRAMS'
+  const [deptTableFilter, setDeptTableFilter] = useState('all'); // 'all', 'web', 'mobile', 'normal', 'priority'
+  const [adminHomeData, setAdminHomeData] = useState(null);
+  const [deptUserCreationOpen, setDeptUserCreationOpen] = useState(true);
+  const [deptMisOpen, setDeptMisOpen] = useState(true);
+  const [deptAppealOpen, setDeptAppealOpen] = useState(true);
 
   const [grievances, setGrievances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -228,6 +239,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
 
   const getDefaultSidebarItem = () => {
     if (initialView) return initialView;
+    if (isDepartmentNodal) return 'Department Dashboard';
     if (isDealingHand) return 'DealingHand Dashboard';
     if (isRaabitaHead) return 'RMC Head Dashboard';
     if (isDM) return 'DM Dashboard';
@@ -245,6 +257,9 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
       if (saved) {
         if (isDM && ['Appeal Dashboard', 'Appeal MIS Report', 'Appellate Report', 'Create Department Nodal', 'Create users', 'Create Offices & Designation', 'Department Mapping', 'Citizen Registration List', 'Dealing Hand Grievances', 'Tree Dashboard', 'Advance Query Builder', 'Announcement / Notification List'].includes(saved)) {
           return 'DM Dashboard';
+        }
+        if (isDepartmentNodal && ['Create Department Nodal', 'Create RMC Users', 'Citizen Registration List', 'Dealing Hand Grievances'].includes(saved)) {
+          return 'Department Dashboard';
         }
         if (isDealingHand && saved !== 'DealingHand Dashboard' && saved !== 'Grievance Entry') {
           return 'DealingHand Dashboard';
@@ -273,6 +288,8 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
       setSidebarActiveItem('DM Dashboard');
     } else if (isRaabitaHead && ['Appeal Dashboard', 'Appeal MIS Report', 'Appellate Report', 'Create Department Nodal', 'Create Offices & Designation', 'Department Mapping', 'Tree Dashboard', 'Advance Query Builder', 'Feedback Analysis', 'New Feedback Analysis', 'Heatmap'].includes(sidebarActiveItem)) {
       setSidebarActiveItem('RMC Head Dashboard');
+    } else if (isDepartmentNodal && ['Create Department Nodal', 'Create RMC Users', 'Citizen Registration List', 'Dealing Hand Grievances'].includes(sidebarActiveItem)) {
+      setSidebarActiveItem('Department Dashboard');
     } else if (isDealingHand && ['Appeal Dashboard', 'Appeal MIS Report', 'Appellate Report', 'Create Department Nodal', 'Create Offices & Designation', 'Department Mapping', 'Tree Dashboard', 'Advance Query Builder', 'Feedback Analysis', 'New Feedback Analysis', 'Heatmap', 'District Wise Report', 'Announcement / Notification List'].includes(sidebarActiveItem)) {
       setSidebarActiveItem('DealingHand Dashboard');
     }
@@ -356,7 +373,14 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
   const [isAppealMisLoading, setIsAppealMisLoading] = useState(false);
 
   // Analytical Dashboard Filter & Data States
-  const [analDept, setAnalDept] = useState('');
+  const [analDept, setAnalDept] = useState(() => isDepartmentNodal ? (user?.department || user?.departmentName || '') : '');
+
+  useEffect(() => {
+    if (isDepartmentNodal && userDept && analDept !== userDept) {
+      setAnalDept(userDept);
+      handleAnalDeptChange(userDept);
+    }
+  }, [isDepartmentNodal, userDept]);
   const [analCat, setAnalCat] = useState('');
   const [analSubCat, setAnalSubCat] = useState('');
   const [analSubCatL2, setAnalSubCatL2] = useState('');
@@ -507,6 +531,22 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
         targetDistrict = '';
       }
 
+      let effectiveOrigin = homeOriginFilter;
+      let effectiveKeyFlag = homeKeyFlagFilter;
+      if (isDepartmentNodal) {
+        if (deptActiveTab === 'CPGRAMS') {
+          effectiveOrigin = 'CPGRAMS';
+        } else if (deptTableFilter === 'web') {
+          effectiveOrigin = 'JKSAMADHAN';
+        } else if (deptTableFilter === 'mobile') {
+          effectiveOrigin = 'RAABITA';
+        } else if (deptTableFilter === 'normal') {
+          effectiveKeyFlag = 'Normal';
+        } else if (deptTableFilter === 'priority') {
+          effectiveKeyFlag = 'Priority';
+        }
+      }
+
       const params = {
         page: currentPage - 1,
         size: entriesPerPage,
@@ -519,9 +559,9 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
         category: homeCategoryFilter,
         dateFrom: homeDateFromFilter,
         dateTo: homeDateToFilter,
-        origin: homeOriginFilter,
+        origin: effectiveOrigin,
         finalStatus: homeFinalStatusFilter,
-        keyFlag: homeKeyFlagFilter
+        keyFlag: effectiveKeyFlag
       };
 
       let res = await grievanceService.getSuperAdminGrievances(params);
@@ -537,7 +577,9 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
             if (wt === 'RAABITA' || wt === 'MOBILE' || wt === 'APP' || wt === 'OFFLINE') return 'mobile';
             return g.windowType || 'web';
           })(),
-          privilege: 'Normal',
+          privilege: g.keyFlag || 'Normal',
+          pendingSince: g.createdAt ? Math.max(1, Math.floor((new Date() - new Date(g.createdAt)) / (1000 * 60 * 60 * 24))) : 72,
+          forwardedTo: g.forwardedTo || 'NA',
           mobile: g.citizenPhone || g.mobile || 'N/A',
           lastActionDate: g.updatedAt || g.createdAt || 'N/A',
           department: g.department || 'N/A',
@@ -550,8 +592,8 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
           receivedFrom: 'NA',
           date: g.createdAt || 'N/A',
           status: g.status || 'Pending',
-          aiClassification: 'N/A',
-          aiTracking: 'N/A'
+          aiClassification: g.aiClassification || 'Repeated',
+          aiTracking: `${g.createdAt ? Math.max(1, Math.floor((new Date() - new Date(g.createdAt)) / (1000 * 60 * 60 * 24))) : 76} / 28`
         }));
         setGrievances(formatted);
         setTotalElements(res.totalElements);
@@ -562,29 +604,76 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
         setTotalPages(0);
       }
 
-      // Fetch dynamic stats from dashboard summary aggregation REST API with authenticated district scope
-      const statsData = await grievanceService.getSuperAdminDashboardSummary(targetDistrict || '');
-      if (statsData) {
-        setSummaryStats(statsData);
-        setStats({
-          totalG: String(statsData.totalGrievances || 0),
-          web: String(statsData.web || 0),
-          App: String(statsData.app || 0),
-          pending: String(statsData.pending || 0),
-          resolved: String(statsData.resolved || 0),
-          rejected: String(statsData.rejected || 0),
-          totalClosed: String((statsData.resolved || 0) + (statsData.rejected || 0)),
-          appealReceviedCount: String(statsData.appealReceivedCount || 0),
-          forwarded: String(statsData.forwarded || 0),
-          dNpCount: String(statsData.dnpCount || 0),
-          cpgramClosed: String(statsData.cpgramClosed || 0),
-          fwdToCPGRAM: String(statsData.fwdToCPGRAM || 0),
-          totalCPGRAM: String(statsData.totalCPGRAM || 0),
-          priorityFlagCount: String(statsData.escalated || 0),
-          remarkAdded: String(statsData.remarkAdded || 0),
-          loggedInUserFullName: user?.name || user?.username || (isDM ? 'District Magistrate' : 'Super Admin'),
-          userDepartment: isDM ? `District Administration (${user?.district || user?.districtName || 'Jammu'})` : 'All Departments'
-        });
+      if (isDepartmentNodal) {
+        try {
+          const homeData = await adminService.getDashboardHome();
+          if (homeData) {
+            setAdminHomeData(homeData);
+            setStats(prev => ({
+              ...prev,
+              totalG: String(homeData.totalG || '0'),
+              web: String(homeData.web || '0'),
+              App: String(homeData.App || '0'),
+              pending: String(homeData.pending || '0'),
+              resolved: String(homeData.resolved || '0'),
+              rejected: String(homeData.rejected || '0'),
+              totalClosed: String(homeData.totalClosed || (parseInt(homeData.resolved || 0) + parseInt(homeData.rejected || 0))),
+              propDisp: String(homeData.propDisp || '0'),
+              pendingWithAdmin: String(homeData.pendingWithAdmin || '0'),
+              forwarded: String(homeData.forwarded || '0'),
+              dNpCount: String(homeData.dNpCount ?? homeData.DNP ?? '0'),
+              remark: String(homeData.remark || '0'),
+              remarkAdded: String(homeData.remark || '0'),
+              totalCPGRAM: String(homeData.totalCPGRAM || '0'),
+              fwdToCPGRAM: String(homeData.fwdToCPGRAM || '0'),
+              cpgramClosed: String(homeData.cpgramClosed || '0'),
+              priorityFlagCount: String(homeData.priorityFlagCount || '0'),
+              normalFlagCount: String(homeData.normalFlagCount || '0'),
+              appealReceviedCount: String(homeData.appealReceviedCount || '0'),
+              fwdByOtherDep: String(homeData.fwdByOtherDep || '0'),
+              pendingAtOtherDep: String(homeData.pendingAtOtherDep || '0'),
+              resolvedByOtherDep: String(homeData.resolvedByOtherDep || '0'),
+              rejectedByOtherDep: String(homeData.rejectedByOtherDep || '0'),
+              proposeDispAtOtherDep: String(homeData.proposeDispAtOtherDep || '0'),
+              forwardedpAtOtherDep: String(homeData.forwardedpAtOtherDep || '0'),
+              dnpAtOtherDep: String(homeData.dnpAtOtherDep || '0'),
+              remarkAtOtherDep: String(homeData.remarkAtOtherDep || '0'),
+              loggedInUserFullName: homeData.loggedInUserFullName || user?.name || user?.username,
+              userDepartment: homeData.userDepartment || user?.department || 'REVENUE DEPARTMENT'
+            }));
+          }
+        } catch (adminErr) {
+          console.error("Error loading admin home data for department nodal:", adminErr);
+        }
+      } else {
+        try {
+          // Fetch dynamic stats for SuperAdmin/DM scope
+          const statsData = await grievanceService.getSuperAdminDashboardSummary(targetDistrict || '');
+          if (statsData) {
+            setSummaryStats(statsData);
+            setStats({
+              totalG: String(statsData.totalGrievances || 0),
+              web: String(statsData.web || 0),
+              App: String(statsData.app || 0),
+              pending: String(statsData.pending || 0),
+              resolved: String(statsData.resolved || 0),
+              rejected: String(statsData.rejected || 0),
+              totalClosed: String((statsData.resolved || 0) + (statsData.rejected || 0)),
+              appealReceviedCount: String(statsData.appealReceivedCount || 0),
+              forwarded: String(statsData.forwarded || 0),
+              dNpCount: String(statsData.dnpCount || 0),
+              cpgramClosed: String(statsData.cpgramClosed || 0),
+              fwdToCPGRAM: String(statsData.fwdToCPGRAM || 0),
+              totalCPGRAM: String(statsData.totalCPGRAM || 0),
+              priorityFlagCount: String(statsData.escalated || 0),
+              remarkAdded: String(statsData.remarkAdded || 0),
+              loggedInUserFullName: user?.name || user?.username || (isDM ? 'District Magistrate' : 'Super Admin'),
+              userDepartment: isDM ? `District Administration (${user?.district || user?.districtName || 'Jammu'})` : (user?.department || 'All Departments')
+            });
+          }
+        } catch (summaryErr) {
+          console.warn("Could not fetch dashboard summary:", summaryErr);
+        }
       }
     } catch (err) {
       console.error('Error loading dashboard data:', err);
@@ -863,7 +952,9 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
     homeDateToFilter,
     homeOriginFilter,
     homeFinalStatusFilter,
-    homeKeyFlagFilter
+    homeKeyFlagFilter,
+    deptActiveTab,
+    deptTableFilter
   ]);
 
   // Appeal Dashboard fetching functions & hooks
@@ -1163,7 +1254,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
   };
 
   const resetAnalFilters = () => {
-    setAnalDept('');
+    setAnalDept(isDepartmentNodal ? userDept : '');
     setAnalCat('');
     setAnalSubCat('');
     setAnalSubCatL2('');
@@ -2090,7 +2181,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                 <User className="h-4 w-4" />
               </div>
               <span className="max-w-[155px] truncate font-sans text-slate-700 dark:text-slate-300 text-xs">
-                {user?.name || 'harender singh'}
+                {stats.loggedInUserFullName || user?.name || 'harender singh'}
               </span>
               <ChevronDown className="h-3.5 w-3.5 opacity-60 text-slate-600 dark:text-slate-450" />
             </button>
@@ -2098,7 +2189,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-lg py-1.5 z-50 text-left font-sans animate-fadeIn">
                 <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
                   <span className="block text-[10px] text-slate-450 font-bold uppercase tracking-wider">Logged in as</span>
-                  <span className="block text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{user?.name || 'harender singh'}</span>
+                  <span className="block text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{stats.loggedInUserFullName || user?.name || 'harender singh'}</span>
                 </div>
                 <button
                   onClick={() => {
@@ -2134,9 +2225,9 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
 
           {/* Sidebar Top Title Item */}
           <div className="p-3.5 bg-[#18192a] border-b border-slate-800 flex items-center gap-3">
-            {sidebarActiveItem !== (isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard') ? (
+            {sidebarActiveItem !== (isDepartmentNodal ? 'Department Dashboard' : isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard') ? (
               <button
-                onClick={() => setSidebarActiveItem(isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard')}
+                onClick={() => setSidebarActiveItem(isDepartmentNodal ? 'Department Dashboard' : isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard')}
                 className="w-full py-2 bg-[#28293d] hover:bg-[#32334d] text-white rounded-full text-xs font-bold flex items-center justify-center gap-2 border-0 cursor-pointer transition-all px-2.5"
                 title="Back to Dashboard"
               >
@@ -2150,7 +2241,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                 </div>
                 {!sidebarCollapsed && (
                   <span className="font-bold text-xs text-white tracking-wide truncate">
-                    {isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard'}
+                    {isDepartmentNodal ? 'Department Dashboard' : isDealingHand ? 'DealingHand Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? 'DM Dashboard' : 'Super Admin Dashboard'}
                   </span>
                 )}
               </>
@@ -2159,6 +2250,226 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
 
           {/* Menu Items List */}
           {sidebarActiveItem !== 'Account Settings' && (() => {
+            if (isDepartmentNodal) {
+              const isActive = (item) => {
+                if (item === 'Dashboard' || item === 'Department Dashboard') {
+                  return sidebarActiveItem === 'Department Dashboard' || sidebarActiveItem === 'Dashboard' || sidebarActiveItem === 'Home' || sidebarActiveItem === 'Super Admin Dashboard';
+                }
+                return sidebarActiveItem === item;
+              };
+
+              return (
+                <nav className="flex-1 p-3 space-y-2 overflow-y-auto">
+                  {/* Dashboard */}
+                  <button
+                    onClick={() => setSidebarActiveItem('Department Dashboard')}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors border-0 cursor-pointer ${
+                      isActive('Dashboard')
+                        ? 'bg-[#3b82f6] text-white shadow-sm font-extrabold'
+                        : 'hover:bg-[#28293d] text-slate-300'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && <span>Dashboard</span>}
+                  </button>
+
+                  {/* User & Category Creation Group */}
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setDeptUserCreationOpen(!deptUserCreationOpen)}
+                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-colors border-0 cursor-pointer ${
+                        deptUserCreationOpen ? 'bg-[#28293d] text-white' : 'hover:bg-[#28293d] text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Users className="w-4 h-4 shrink-0" />
+                        {!sidebarCollapsed && <span className="truncate">User & Category Creation</span>}
+                      </div>
+                      {!sidebarCollapsed && (
+                        deptUserCreationOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+
+                    {deptUserCreationOpen && !sidebarCollapsed && (
+                      <div className="pl-4 space-y-1.5 pt-1">
+                        <button
+                          onClick={() => {
+                            setCreateUserForm(prev => ({
+                              ...prev,
+                              userType: 'Dealing Hand',
+                              division: user?.division || 'JAMMU',
+                              district: user?.district || ''
+                            }));
+                            setSidebarActiveItem('Create users');
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${
+                            sidebarActiveItem === 'Create users' ? 'text-white bg-[#3b82f6]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
+                          }`}
+                        >
+                          Create User
+                        </button>
+                        <button
+                          onClick={() => setSidebarActiveItem('Create Offices & Designation')}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${
+                            sidebarActiveItem === 'Create Offices & Designation' ? 'text-white bg-[#3b82f6]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
+                          }`}
+                        >
+                          Create Designation
+                        </button>
+                        <button
+                          onClick={() => setSidebarActiveItem('Department Mapping')}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${
+                            sidebarActiveItem === 'Department Mapping' ? 'text-white bg-[#3b82f6]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
+                          }`}
+                        >
+                          Category Mapping
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* MIS Dashboard */}
+                  <button
+                    onClick={() => setSidebarActiveItem('Analytical Dashboard')}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors border-0 cursor-pointer ${
+                      sidebarActiveItem === 'Analytical Dashboard'
+                        ? 'bg-[#3b82f6] text-white shadow-sm font-extrabold'
+                        : 'hover:bg-[#28293d] text-slate-300'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && <span>MIS Dashboard</span>}
+                  </button>
+
+                  {/* MIS Reports Group */}
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setDeptMisOpen(!deptMisOpen)}
+                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-colors border-0 cursor-pointer ${
+                        deptMisOpen ? 'bg-[#3b82f6] text-white shadow-sm' : 'hover:bg-[#28293d] text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <FolderOpen className="w-4 h-4 shrink-0" />
+                        {!sidebarCollapsed && <span className="truncate">MIS Reports</span>}
+                      </div>
+                      {!sidebarCollapsed && (
+                        deptMisOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+
+                    {deptMisOpen && !sidebarCollapsed && (
+                      <div className="pl-4 space-y-1.5 pt-1">
+                        {[
+                          { label: 'Department User List', name: 'Department User List', icon: UserCheck },
+                          { label: 'Age Analysis Report', name: 'Age Analysis Report', icon: Clock },
+                          { label: 'Status Wise Report', name: 'Status Wise Report', icon: BarChart3 },
+                          { label: 'Pendency Report', name: 'Pendency Report', icon: AlertTriangle },
+                          { label: 'Age Wise Pendency Report', name: 'Age Wise Pendency Report', icon: Clock },
+                          { label: 'District Wise Report', name: 'District Wise Report', icon: Map }
+                        ].map((sub, sIdx) => (
+                          <button
+                            key={sIdx}
+                            onClick={() => setSidebarActiveItem(sub.name)}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer block truncate ${
+                              sidebarActiveItem === sub.name ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
+                            }`}
+                          >
+                            {sub.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Appeal Dashboard with badge */}
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setDeptAppealOpen(!deptAppealOpen)}
+                      className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-between transition-colors border-0 cursor-pointer ${
+                        sidebarActiveItem === 'Appeal Dashboard' ? 'bg-[#3b82f6] text-white shadow-sm' : 'hover:bg-[#28293d] text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <ShieldCheck className="w-4 h-4 shrink-0" />
+                        {!sidebarCollapsed && <span className="truncate">Appeal Dashboard</span>}
+                      </div>
+                      {!sidebarCollapsed && (
+                        deptAppealOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    {deptAppealOpen && !sidebarCollapsed && (
+                      <div className="pl-4 space-y-1.5 pt-1">
+                        <button
+                          onClick={() => setSidebarActiveItem('Appeal Dashboard')}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors border-0 cursor-pointer flex items-center justify-between truncate ${
+                            sidebarActiveItem === 'Appeal Dashboard' ? 'text-white bg-[#28293d]' : 'text-slate-400 hover:text-white hover:bg-[#28293d]'
+                          }`}
+                        >
+                          <span>Appeal Recieved</span>
+                          <span className="w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                            {adminHomeData?.appealReceviedCount || stats.appealReceviedCount || 6}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tree Dashboard */}
+                  <button
+                    onClick={() => setSidebarActiveItem('Tree Dashboard')}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors border-0 cursor-pointer ${
+                      sidebarActiveItem === 'Tree Dashboard'
+                        ? 'bg-[#3b82f6] text-white shadow-sm font-extrabold'
+                        : 'hover:bg-[#28293d] text-slate-300'
+                    }`}
+                  >
+                    <Network className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && <span>Tree Dashboard</span>}
+                  </button>
+
+                  {/* Advance Query Builder */}
+                  <button
+                    onClick={() => setSidebarActiveItem('Advance Query Builder')}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors border-0 cursor-pointer ${
+                      sidebarActiveItem === 'Advance Query Builder'
+                        ? 'bg-[#3b82f6] text-white shadow-sm font-extrabold'
+                        : 'hover:bg-[#28293d] text-slate-300'
+                    }`}
+                  >
+                    <Database className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && <span>Advance Query Builder</span>}
+                  </button>
+
+                  {/* Feedback Analysis */}
+                  <button
+                    onClick={() => setSidebarActiveItem('Feedback Analysis')}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors border-0 cursor-pointer ${
+                      sidebarActiveItem === 'Feedback Analysis'
+                        ? 'bg-[#3b82f6] text-white shadow-sm font-extrabold'
+                        : 'hover:bg-[#28293d] text-slate-300'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && <span>Feedback Analysis</span>}
+                  </button>
+
+                  {/* New Feedback Analysis */}
+                  <button
+                    onClick={() => setSidebarActiveItem('New Feedback Analysis')}
+                    className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 transition-colors border-0 cursor-pointer ${
+                      sidebarActiveItem === 'New Feedback Analysis'
+                        ? 'bg-[#3b82f6] text-white shadow-sm font-extrabold'
+                        : 'hover:bg-[#28293d] text-slate-300'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && <span>New Feedback Analysis</span>}
+                  </button>
+                </nav>
+              );
+            }
+
             if (isDealingHand) {
               const dealingHandMenuItems = [
                 { label: 'DealingHand Dashboard', name: 'DealingHand Dashboard', icon: LayoutDashboard },
@@ -2508,7 +2819,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
 
           {/* Sidebar Footer Version Badge */}
           <div className="p-3 border-t border-slate-800 text-center text-[10px] font-mono font-bold text-slate-400">
-            {!sidebarCollapsed ? 'ver: v2.7.13' : 'v2.7.13'}
+            {!sidebarCollapsed ? 'ver: v2.8.5' : 'v2.8.5'}
           </div>
 
         </aside>
@@ -2520,7 +2831,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                {sidebarActiveItem === 'Department Mapping' ? 'Department Mapping' : sidebarActiveItem === 'Create Department Nodal' ? 'Create Department Nodal' : sidebarActiveItem === 'Create RMC Users' ? 'Create RMC Users' : sidebarActiveItem === 'Create DealingHand Users' ? (isDealingHand ? 'Create Dealing Hand Users' : 'Create Users') : sidebarActiveItem === 'Create users' ? (isDealingHand ? 'Create Dealing Hand Users' : 'Create Users') : sidebarActiveItem === 'Create Offices & Designation' ? 'Create Offices & Designation' : (isDealingHand ? 'Home' : isRaabitaHead ? 'Home' : isDM ? 'DM Dashboard' : 'Home')}
+                {isDepartmentNodal ? 'Home' : sidebarActiveItem === 'Department Mapping' ? 'Department Mapping' : sidebarActiveItem === 'Create Department Nodal' ? 'Create Department Nodal' : sidebarActiveItem === 'Create RMC Users' ? 'Create RMC Users' : sidebarActiveItem === 'Create DealingHand Users' ? (isDealingHand ? 'Create Dealing Hand Users' : 'Create Users') : sidebarActiveItem === 'Create users' ? (isDealingHand ? 'Create Dealing Hand Users' : 'Create Users') : sidebarActiveItem === 'Create Offices & Designation' ? 'Create Offices & Designation' : (isDealingHand ? 'Home' : isRaabitaHead ? 'Home' : isDM ? 'DM Dashboard' : 'Home')}
               </h2>
               <span className="text-slate-400 font-medium">|</span>
               <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
@@ -2538,7 +2849,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                             ? 'Create Offices & Designation'
                             : sidebarActiveItem === 'Appeal Dashboard'
                               ? `Appeal Dashboard (${user?.department || 'null'})`
-                              : (isDealingHand ? 'DealingHand Head Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? `DM Dashboard` : isMonitoringCell ? 'Monitoring Cell Dashboard' : 'Super Admin Dashboard')}
+                              : (isDepartmentNodal ? ((sidebarActiveItem === 'Department Dashboard' || sidebarActiveItem === 'Dashboard' || sidebarActiveItem === 'Home' || sidebarActiveItem === 'Super Admin Dashboard') ? `Department Nodal Dashboard (${adminHomeData?.userDepartment || stats.userDepartment || user?.department || 'REVENUE DEPARTMENT'})` : sidebarActiveItem) : isDealingHand ? 'DealingHand Head Dashboard' : isRaabitaHead ? 'RMC Head Dashboard' : isDM ? `DM Dashboard` : isMonitoringCell ? 'Monitoring Cell Dashboard' : 'Super Admin Dashboard')}
               </span>
               {isDM && (
                 <span className="ml-2 px-3 py-1 bg-blue-600 text-white font-extrabold rounded-lg text-xs tracking-wider shadow-xs uppercase flex items-center gap-1">
@@ -2560,15 +2871,15 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                   <span>Configure Category Mapping</span>
                 </button>
               )}
-              {(sidebarActiveItem === 'Super Admin Dashboard' || sidebarActiveItem === 'DM Dashboard' || sidebarActiveItem === 'RMC Head Dashboard' || sidebarActiveItem === 'DealingHand Dashboard') && (
+              {(sidebarActiveItem === 'Super Admin Dashboard' || sidebarActiveItem === 'Department Dashboard' || sidebarActiveItem === 'Dashboard' || sidebarActiveItem === 'Home' || sidebarActiveItem === 'DM Dashboard' || sidebarActiveItem === 'RMC Head Dashboard' || sidebarActiveItem === 'DealingHand Dashboard') && (
                 <>
                   <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-                    {(isDM || isRaabitaHead || isDealingHand ? ['Home'] : ['Home', 'JK-IGRAMS', 'CPGRAMS', 'HLG Mulaqaat']).map((tab) => (
+                    {(isDepartmentNodal ? ['Within/Intra Department', 'Outside/Inter Department', 'CPGRAMS'] : (isDM || isRaabitaHead || isDealingHand ? ['Home'] : ['Home', 'JK-IGRAMS', 'CPGRAMS', 'HLG Mulaqaat'])).map((tab) => (
                       <button
                         key={tab}
                         type="button"
-                        onClick={() => setActiveTab(tab)}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs tracking-wide transition-all border-0 cursor-pointer ${activeTab === tab
+                        onClick={() => { if (isDepartmentNodal) { setDeptActiveTab(tab); setCurrentPage(1); } else { setActiveTab(tab); } }}
+                        className={`px-3.5 py-1.5 rounded-lg text-xs tracking-wide transition-all border-0 cursor-pointer ${(isDepartmentNodal ? deptActiveTab === tab : activeTab === tab)
                             ? 'bg-blue-600 text-white shadow-xs font-semibold'
                             : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800/50 bg-transparent font-medium'
                           }`}
@@ -2585,7 +2896,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                     <div className="relative">
                       <Bell className="w-4 h-4" />
                       <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-rose-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">
-                        {stats.notifications ? stats.notifications.length : 0}
+                        {adminHomeData?.notifications ? adminHomeData.notifications.length : (stats.notifications ? stats.notifications.length : 0)}
                       </span>
                     </div>
                     <span>Create Announcement +</span>
@@ -2597,26 +2908,11 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
 
           {/* Render Active View */}
           {['Age Analysis Report', 'Age Wise Pendency Report'].includes(sidebarActiveItem) ? (
-            /* ────────────────────────────────────────────────────────
-               VIEW: REPORT / DASHBOARD PLACEHOLDER
-               ──────────────────────────────────────────────────────── */
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6 text-xs animate-fadeIn text-left min-h-[400px] flex flex-col items-center justify-center">
-              <div className="text-center space-y-3 max-w-md">
-                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-950/30 text-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-xs">
-                  <BarChart3 className="w-8 h-8" />
-                </div>
-                <h3 className="text-base font-extrabold text-slate-800 dark:text-white uppercase tracking-wider">{sidebarActiveItem}</h3>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  The visual structure and reporting widgets for <strong>{sidebarActiveItem}</strong> will be implemented and connected to database APIs in the next phase.
-                </p>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-350 rounded-full text-[10px] font-bold">
-                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping"></span>
-                  <span>UI Container Initialized</span>
-                </div>
-              </div>
-            </div>
-          ) : (sidebarActiveItem === 'Feedback Analysis' || sidebarActiveItem === 'New Feedback Analysis') ? (
+            <AgeAnalysisReport initialPendingOnly={sidebarActiveItem === 'Age Wise Pendency Report'} />
+          ) : sidebarActiveItem === 'Feedback Analysis' ? (
             <FeedbackAnalysis />
+          ) : sidebarActiveItem === 'New Feedback Analysis' ? (
+            <NewFeedbackAnalysis />
           ) : sidebarActiveItem === 'District Wise Report' ? (
             <DistrictWiseReport />
           ) : sidebarActiveItem === 'Average Time Taken Report' ? (
@@ -3642,10 +3938,11 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Department</label>
                     <select
                       value={analDept}
-                      onChange={(e) => handleAnalDeptChange(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs text-slate-700 dark:text-slate-300 outline-none font-medium"
+                      onChange={(e) => { if (!isDepartmentNodal) handleAnalDeptChange(e.target.value); }}
+                      disabled={isDepartmentNodal}
+                      className={`w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs text-slate-700 dark:text-slate-300 outline-none font-medium ${isDepartmentNodal ? 'opacity-75 cursor-not-allowed' : ''}`}
                     >
-                      <option value="">All Departments</option>
+                      {!isDepartmentNodal && <option value="">All Departments</option>}
                       {departments.map((dept) => (
                         <option key={dept.id} value={dept.name}>{dept.name}</option>
                       ))}
@@ -5198,7 +5495,207 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                 </div>
               )}
 
-              {/* Role-Specific Metric KPI Cards Grid using Shared Reusable KPICard Component */}
+              {/* Department Nodal Active Tab Banner Pill */}
+              {isDepartmentNodal && (
+                <div className="w-full bg-[#c7d2fe]/40 dark:bg-slate-800 py-1.5 px-4 rounded-xl text-center font-bold text-xs text-indigo-900 dark:text-indigo-200">
+                  {deptActiveTab === 'Within/Intra Department' ? 'Within / Intra Department' : deptActiveTab === 'Outside/Inter Department' ? 'Outside / Inter Department' : 'CPGRAMS'}
+                </div>
+              )}
+
+              {/* Department Nodal Specific KPI Cards Grid */}
+              {isDepartmentNodal ? (
+                deptActiveTab === 'Within/Intra Department' ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {[
+                        {
+                          id: 'dept-total',
+                          title: 'Total Grievances Submitted',
+                          value: `Total ${adminHomeData?.totalG || stats.totalG}`,
+                          badge: `Web ${adminHomeData?.web || stats.web} App ${adminHomeData?.App || stats.App}`,
+                          icon: PieChart,
+                          color: 'bg-[#1e6091]'
+                        },
+                        {
+                          id: 'dept-pending',
+                          title: 'Pending with Department',
+                          value: String(adminHomeData?.pending || stats.pending || 0),
+                          icon: Calendar,
+                          color: 'bg-[#0096c7]'
+                        },
+                        {
+                          id: 'dept-disposed',
+                          title: 'Final Disposed',
+                          value: `Total ${adminHomeData?.totalClosed || stats.totalClosed}`,
+                          badge: `Resolved ${adminHomeData?.resolved || stats.resolved} Rejected ${adminHomeData?.rejected || stats.rejected}`,
+                          icon: PieChart,
+                          color: 'bg-[#40916c]'
+                        },
+                        {
+                          id: 'dept-prop-disp',
+                          title: 'Proposed Disposed',
+                          value: String(adminHomeData?.propDisp || stats.propDisp || 0),
+                          icon: ThumbsUp,
+                          color: 'bg-[#e76f51]'
+                        },
+                        {
+                          id: 'dept-appealed',
+                          title: 'Appealed',
+                          value: String(adminHomeData?.pendingWithAdmin || adminHomeData?.appealReceviedCount || stats.appealReceviedCount || 0),
+                          icon: AlertCircle,
+                          color: 'bg-[#f4a261]'
+                        },
+                        {
+                          id: 'dept-forwarded',
+                          title: 'Forwarded',
+                          value: String(adminHomeData?.forwarded || stats.forwarded || 0),
+                          icon: Copy,
+                          color: 'bg-[#7209b7]'
+                        },
+                        {
+                          id: 'dept-dnp',
+                          title: 'Does Not Pertain',
+                          value: String(adminHomeData?.dNpCount ?? adminHomeData?.DNP ?? stats.dNpCount ?? 0),
+                          icon: Presentation,
+                          color: 'bg-[#e63946]'
+                        },
+                        {
+                          id: 'dept-remark',
+                          title: 'Remark Added',
+                          value: String(adminHomeData?.remark || stats.remarkAdded || 0),
+                          icon: Flag,
+                          color: 'bg-[#2ec4b6]'
+                        }
+                      ].map((kpi) => (
+                        <KPICard
+                          key={kpi.id}
+                          title={kpi.title}
+                          value={kpi.value}
+                          icon={kpi.icon}
+                          color={kpi.color}
+                          badge={kpi.badge}
+                        />
+                      ))}
+                    </div>
+                    {/* Centered 9th Card: CPGRAM */}
+                    <div className="flex justify-center">
+                      <div className="w-full sm:w-1/2 lg:w-1/4">
+                        <KPICard
+                          title="CPGRAM"
+                          value={`Total ${adminHomeData?.totalCPGRAM || stats.totalCPGRAM || 0}`}
+                          badge={`Forwarded ${adminHomeData?.fwdToCPGRAM || stats.fwdToCPGRAM || 0} Closed ${adminHomeData?.cpgramClosed || stats.cpgramClosed || 0}`}
+                          icon={Copy}
+                          color="bg-[#c1121f]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : deptActiveTab === 'Outside/Inter Department' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                      {
+                        id: 'other-fwd',
+                        title: 'Forwarded by Other Department',
+                        value: String(adminHomeData?.fwdByOtherDep || stats.fwdByOtherDep || 0),
+                        icon: Copy,
+                        color: 'bg-[#1e6091]'
+                      },
+                      {
+                        id: 'other-pending',
+                        title: 'Pending at Other Department',
+                        value: String(adminHomeData?.pendingAtOtherDep || stats.pendingAtOtherDep || 0),
+                        icon: Calendar,
+                        color: 'bg-[#0096c7]'
+                      },
+                      {
+                        id: 'other-resolved',
+                        title: 'Resolved by Other Department',
+                        value: String(adminHomeData?.resolvedByOtherDep || stats.resolvedByOtherDep || 0),
+                        icon: ThumbsUp,
+                        color: 'bg-[#40916c]'
+                      },
+                      {
+                        id: 'other-rejected',
+                        title: 'Rejected by Other Department',
+                        value: String(adminHomeData?.rejectedByOtherDep || stats.rejectedByOtherDep || 0),
+                        icon: AlertCircle,
+                        color: 'bg-[#e63946]'
+                      },
+                      {
+                        id: 'other-prop',
+                        title: 'Proposed Disposed',
+                        value: String(adminHomeData?.proposeDispAtOtherDep || stats.proposeDispAtOtherDep || 0),
+                        icon: ThumbsUp,
+                        color: 'bg-[#e76f51]'
+                      },
+                      {
+                        id: 'other-forwarded',
+                        title: 'Forwarded',
+                        value: String(adminHomeData?.forwardedpAtOtherDep || stats.forwardedpAtOtherDep || 0),
+                        icon: Copy,
+                        color: 'bg-[#7209b7]'
+                      },
+                      {
+                        id: 'other-dnp',
+                        title: 'Does Not Pertain',
+                        value: String(adminHomeData?.dnpAtOtherDep || stats.dnpAtOtherDep || 0),
+                        icon: Presentation,
+                        color: 'bg-[#d90429]'
+                      },
+                      {
+                        id: 'other-remark',
+                        title: 'Remark Added',
+                        value: String(adminHomeData?.remarkAtOtherDep || stats.remarkAtOtherDep || 0),
+                        icon: Flag,
+                        color: 'bg-[#2ec4b6]'
+                      }
+                    ].map((kpi) => (
+                      <KPICard
+                        key={kpi.id}
+                        title={kpi.title}
+                        value={kpi.value}
+                        icon={kpi.icon}
+                        color={kpi.color}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      {
+                        id: 'cpgram-total',
+                        title: 'Total CPGRAM',
+                        value: `Total ${adminHomeData?.totalCPGRAM || stats.totalCPGRAM || 0}`,
+                        icon: PieChart,
+                        color: 'bg-[#1e6091]'
+                      },
+                      {
+                        id: 'cpgram-fwd',
+                        title: 'Forwarded to CPGRAM',
+                        value: String(adminHomeData?.fwdToCPGRAM || stats.fwdToCPGRAM || 0),
+                        icon: Copy,
+                        color: 'bg-[#7209b7]'
+                      },
+                      {
+                        id: 'cpgram-closed',
+                        title: 'Closed at CPGRAM',
+                        value: String(adminHomeData?.cpgramClosed || stats.cpgramClosed || 0),
+                        icon: CheckCircle2,
+                        color: 'bg-[#40916c]'
+                      }
+                    ].map((kpi) => (
+                      <KPICard
+                        key={kpi.id}
+                        title={kpi.title}
+                        value={kpi.value}
+                        icon={kpi.icon}
+                        color={kpi.color}
+                      />
+                    ))}
+                  </div>
+                )
+              ) : (
+              /* Role-Specific Metric KPI Cards Grid using Shared Reusable KPICard Component */
               <div className={`grid grid-cols-1 sm:grid-cols-2 ${isDM ? 'lg:grid-cols-4 xl:grid-cols-7' : 'lg:grid-cols-4'} gap-4`}>
                 {(isDM ? [
                   {
@@ -5327,6 +5824,7 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
 
 
 
+              )}
               {/* Grievance Datatable */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex flex-col overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -5336,6 +5834,33 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                   </h3>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* Department Nodal Filter Radio Pills */}
+                    {isDepartmentNodal && (
+                      <div className="flex items-center gap-3 border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-slate-800/40 px-3 py-1.5 rounded-xl text-xs">
+                        <span className="font-bold text-slate-600 dark:text-slate-300 text-[11px]">Filter</span>
+                        {[
+                          { id: 'all', label: 'All' },
+                          { id: 'web', label: 'Web' },
+                          { id: 'mobile', label: 'Mobile' },
+                          { id: 'normal', label: 'Normal' },
+                          { id: 'priority', label: 'Priority' }
+                        ].map((rf) => (
+                          <label key={rf.id} className="flex items-center gap-1 cursor-pointer select-none font-semibold text-slate-700 dark:text-slate-300 text-xs">
+                            <input
+                              type="radio"
+                              name="deptTableFilter"
+                              checked={deptTableFilter === rf.id}
+                              onChange={() => {
+                                setDeptTableFilter(rf.id);
+                                setCurrentPage(1);
+                              }}
+                              className="w-3.5 h-3.5 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span>{rf.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                     <div className="relative">
                       <input
                         type="text"
@@ -5402,7 +5927,22 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      {isRaabitaHead || isDealingHand ? (
+                      {isDepartmentNodal ? (
+                        <tr className="bg-blue-600 text-white font-extrabold uppercase tracking-wider text-[11px] border-b border-blue-700">
+                          <th className="p-3 text-center">Action</th>
+                          <th className="p-3 text-center">S. No.</th>
+                          <th className="p-3">Grievance ID</th>
+                          <th className="p-3">Main Category</th>
+                          <th className="p-3">Sub Category</th>
+                          <th className="p-3">Submitted By</th>
+                          <th className="p-3">Submitted On</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3 text-center">Pending Since</th>
+                          <th className="p-3">Forwarded To</th>
+                          <th className="p-3 text-center">AI Classification</th>
+                          <th className="p-3 text-center">AI Tracking</th>
+                        </tr>
+                      ) : isRaabitaHead || isDealingHand ? (
                         <tr className="bg-blue-600 text-white font-extrabold uppercase tracking-wider text-[10px] border-b border-blue-700">
                           <th className="p-3 text-center">S. No.</th>
                           <th className="p-3">Grievance ID</th>
@@ -5477,12 +6017,102 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                     <tbody>
                       {isLoading ? (
                         <tr>
-                          <td colSpan={isRaabitaHead || isDealingHand ? 13 : isDM ? 9 : 19} className="text-center py-10 text-slate-400 font-bold">Loading redressal queue...</td>
+                          <td colSpan={isDepartmentNodal ? 12 : isRaabitaHead || isDealingHand ? 13 : isDM ? 9 : 19} className="text-center py-10 text-slate-400 font-bold">Loading redressal queue...</td>
                         </tr>
                       ) : grievances.length === 0 ? (
                         <tr>
-                          <td colSpan={isRaabitaHead || isDealingHand ? 13 : isDM ? 9 : 19} className="text-center py-10 text-slate-400">No data available in table</td>
+                          <td colSpan={isDepartmentNodal ? 12 : isRaabitaHead || isDealingHand ? 13 : isDM ? 9 : 19} className="text-center py-10 text-slate-400">No data available in table</td>
                         </tr>
+                      ) : isDepartmentNodal ? (
+                        grievances.map((g, idx) => (
+                          <tr key={g.id || idx} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-350">
+                            <td className="p-3 text-center">
+                              <div className="relative inline-block text-left">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenActionDropdownId(openActionDropdownId === g.id ? null : g.id);
+                                  }}
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded font-bold border border-slate-300 dark:border-slate-700 cursor-pointer text-xs"
+                                >
+                                  •••
+                                </button>
+                                {openActionDropdownId === g.id && (
+                                  <div className="absolute left-0 mt-1 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl py-1 z-30 text-left">
+                                    <Link
+                                      to={`/superadmin/grievance-details/${g.id}`}
+                                      className="block w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer border-0 bg-transparent no-underline"
+                                    >
+                                      View Details
+                                    </Link>
+                                    <button
+                                      onClick={() => {
+                                        setOpenActionDropdownId(null);
+                                        setSelectedGrievance(g);
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold cursor-pointer border-0 bg-transparent"
+                                    >
+                                      Process / Remark
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 text-center font-bold text-slate-600 dark:text-slate-400">
+                              {(currentPage - 1) * entriesPerPage + idx + 1}
+                            </td>
+                            <td className="p-3 font-semibold text-slate-900 dark:text-white">
+                              <Link
+                                to={`/superadmin/grievance-details/${g.id}`}
+                                className="font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer no-underline text-left block"
+                              >
+                                {g.grievanceId}
+                              </Link>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Mode : {g.mode || 'web'}</div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400">Privilege Assigned : {g.privilege || 'Normal'}</div>
+                            </td>
+                            <td className="p-3 font-semibold text-slate-800 dark:text-slate-200 uppercase">{g.category || 'N/A'}</td>
+                            <td className="p-3 text-slate-600 dark:text-slate-400">{g.subCategory || '-'}</td>
+                            <td className="p-3 font-semibold text-slate-800 dark:text-slate-200 uppercase">{g.submittedBy || 'N/A'}</td>
+                            <td className="p-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">{g.date || 'N/A'}</td>
+                            <td className="p-3">
+                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit ${
+                                (g.status || '').toLowerCase().includes('disposed') || (g.status || '').toLowerCase().includes('resolved')
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                  : (g.status || '').toLowerCase().includes('appeal')
+                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                                    : (g.status || '').toLowerCase().includes('forward')
+                                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300'
+                                      : 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300'
+                              }`}>
+                                {(g.status || '').toLowerCase().includes('disposed') || (g.status || '').toLowerCase().includes('resolved') ? (
+                                  <CheckCircle2 className="w-3 h-3" />
+                                ) : (
+                                  <AlertCircle className="w-3 h-3" />
+                                )}
+                                <span>{g.status || 'Pending'}</span>
+                              </span>
+                            </td>
+                            <td className="p-3 text-center font-bold text-slate-700 dark:text-slate-300">
+                              {g.pendingSince || 72}
+                            </td>
+                            <td className="p-3 text-slate-600 dark:text-slate-400">
+                              {g.forwardedTo || 'NA'}
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-[#fef08a] text-[#854d0e] border border-amber-300">
+                                {g.aiClassification || 'Repeated'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                                <span>{g.pendingSince || 76} / </span>
+                                <span className="w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-extrabold flex items-center justify-center">28</span>
+                              </span>
+                            </td>
+                          </tr>
+                        ))
                       ) : isRaabitaHead || isDealingHand ? (
                         grievances.map((g, idx) => (
                           <tr key={g.id || idx} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 transition-colors border-b border-slate-150 dark:border-slate-800 text-slate-700 dark:text-slate-350">

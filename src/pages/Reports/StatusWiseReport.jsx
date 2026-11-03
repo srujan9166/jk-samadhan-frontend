@@ -16,12 +16,17 @@ import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import { useAuth } from '../../context/AuthContext';
+import { normalizeRole } from '../../config/dashboardConfig';
 
 export default function StatusWiseReport() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canonicalRole = normalizeRole(user);
+  const canSwitchPerspective = ['SUPERADMIN', 'MONITORING_CELL', 'RMC', 'DM'].includes(canonicalRole);
   
   // Filter mode: 'department' or 'user'
-  const [reportMode, setReportMode] = useState('department');
+  const [reportMode, setReportMode] = useState('user');
 
   // Main Report State
   const [data, setData] = useState([]);
@@ -149,7 +154,7 @@ export default function StatusWiseReport() {
         search: searchQuery || ''
       });
 
-      const res = await axiosClient.get(`/super-admin/status-wise-report?${params.toString()}`);
+      const res = await axiosClient.get(`/api/super-admin/status-wise-report?${params.toString()}`);
       const exportList = res.data?.content || data;
 
       let formattedData = [];
@@ -205,7 +210,7 @@ export default function StatusWiseReport() {
         search: searchQuery || ''
       });
 
-      const res = await axiosClient.get(`/super-admin/status-wise-report?${params.toString()}`);
+      const res = await axiosClient.get(`/api/super-admin/status-wise-report?${params.toString()}`);
       const exportList = res.data?.content || data;
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
@@ -270,266 +275,338 @@ export default function StatusWiseReport() {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden text-xs animate-fadeIn space-y-4 p-5">
-      
-      {/* ── TOP TITLE & FILTER BOX CONTAINER ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-3">
+      {/* ── BREADCRUMB ── */}
+      <div>
+        <h4 className="text-xl font-bold text-slate-800 dark:text-slate-100">Status Wise Report</h4>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden text-xs animate-fadeIn space-y-4 p-5">
         
-        {/* Radio Filter Box (Matches JKSv2 screenshot) */}
-        <div className="p-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-2xl shadow-2xs inline-flex items-center gap-4">
-          <span className="font-bold text-slate-700 dark:text-slate-300 text-xs pl-1">Filter</span>
-          <label className="inline-flex items-center gap-2 cursor-pointer font-bold text-slate-800 dark:text-slate-200">
-            <input
-              type="radio"
-              name="statusReportMode"
-              value="user"
-              checked={reportMode === 'user'}
-              onChange={() => { setReportMode('user'); setCurrentPage(1); }}
-              className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            />
-            <span>User Wise</span>
-          </label>
+        {/* ── TOP TITLE & FILTER BOX CONTAINER ── */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
+          
+          {/* Radio Filter Box (Matches JKSv2 specification: visible for SuperAdmin, Secretary, DM; hidden for Department Admin/Officers) */}
+          {canSwitchPerspective ? (
+            <fieldset className="border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1 inline-flex items-center gap-4 bg-white dark:bg-slate-950">
+              <legend className="text-xs font-semibold px-1 text-slate-600 dark:text-slate-400">Filter</legend>
+              <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-medium text-slate-800 dark:text-slate-200">
+                <input
+                  type="radio"
+                  name="radio-whichWise"
+                  value="user"
+                  checked={reportMode === 'user'}
+                  onChange={() => { setReportMode('user'); setCurrentPage(1); }}
+                  className="w-4 h-4 text-blue-600 focus:ring-0 cursor-pointer"
+                />
+                <span>User Wise</span>
+              </label>
 
-          <label className="inline-flex items-center gap-2 cursor-pointer font-bold text-slate-800 dark:text-slate-200 pr-2">
-            <input
-              type="radio"
-              name="statusReportMode"
-              value="department"
-              checked={reportMode === 'department'}
-              onChange={() => { setReportMode('department'); setCurrentPage(1); }}
-              className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
-            />
-            <span>Department Wise</span>
-          </label>
-        </div>
+              <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-medium text-slate-800 dark:text-slate-200">
+                <input
+                  type="radio"
+                  name="radio-whichWise"
+                  value="department"
+                  checked={reportMode === 'department'}
+                  onChange={() => { setReportMode('department'); setCurrentPage(1); }}
+                  className="w-4 h-4 text-blue-600 focus:ring-0 cursor-pointer"
+                />
+                <span>Department Wise</span>
+              </label>
+            </fieldset>
+          ) : <div />}
 
-        {/* Dynamic Center Title */}
-        <div className="text-center md:text-left flex-1 md:pl-6">
-          <h2 className="text-lg font-extrabold text-blue-600 dark:text-blue-400 tracking-wide">
-            {reportMode === 'department' ? 'Department Wise Status Report' : 'User Wise Status Report'}
-          </h2>
-        </div>
-
-        {/* Action Export Buttons */}
-        <div className="flex items-center gap-2.5 self-end md:self-auto">
-          <button
-            onClick={fetchReportData}
-            title="Refresh Data"
-            className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-all border-0 cursor-pointer"
-          >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </button>
-
-          <button
-            onClick={exportToExcel}
-            title="Export Excel"
-            className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-xl font-bold flex items-center gap-1.5 shadow-sm border-0 cursor-pointer transition-all"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span className="hidden sm:inline">Excel</span>
-          </button>
-
-          <button
-            onClick={exportToPDF}
-            title="Export PDF"
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 active:bg-black text-white rounded-xl font-bold flex items-center gap-1.5 shadow-sm border-0 cursor-pointer transition-all dark:bg-slate-700 dark:hover:bg-slate-600"
-          >
-            <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">PDF</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── SEARCH & PAGE SIZE CONTROLS ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-        <div className="flex items-center gap-2">
-          <span className="text-slate-500 font-medium text-xs">Show</span>
-          <select
-            value={pageSize}
-            onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-            className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 font-bold text-slate-800 dark:text-slate-200 outline-none text-xs"
-          >
-            <option value={10}>10</option>
-            <option value={25}>25</option>
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-          </select>
-          <span className="text-slate-500 font-medium text-xs">entries</span>
-        </div>
-
-        <div className="relative w-full sm:w-64">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder={reportMode === 'department' ? "Search department..." : "Search officer, office, dept..."}
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-          />
-        </div>
-      </div>
-
-      {/* ── MAIN TABLE DISPLAY ── */}
-      <div className="overflow-x-auto min-h-[350px] border border-slate-200 dark:border-slate-800 rounded-xl">
-        {isLoading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-            <span className="font-bold text-slate-500 text-xs">Loading Status Wise Report...</span>
+          {/* Dynamic Center Title */}
+          <div className="text-center">
+            <h5 className="text-base font-bold text-[#1e88e5] dark:text-blue-400 m-0 tracking-wide">
+              {reportMode === 'department' ? 'Department Wise Status Report' : 'User Wise Status Report'}
+            </h5>
           </div>
-        ) : error ? (
-          <div className="py-20 text-center text-rose-500 font-bold text-xs">{error}</div>
-        ) : data.length === 0 ? (
-          <div className="py-20 text-center text-slate-400 font-bold text-xs">
-            No Status Wise records found matching criteria.
-          </div>
-        ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#3b82f6] text-white font-extrabold text-[11px] uppercase tracking-wider">
-                <th className="p-3 w-12 text-center border-r border-blue-400/30">S. No.</th>
-                
-                {reportMode === 'department' ? (
-                  <>
-                    <th className="p-3 border-r border-blue-400/30">Department Name</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Total</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Resolved</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Forwarded</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Does Not Pertain</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Pending</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Rejected</th>
-                    <th className="p-3 text-center">Appealed</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="p-3 border-r border-blue-400/30">Officer Name</th>
-                    <th className="p-3 border-r border-blue-400/30">Office Name & Designation</th>
-                    <th className="p-3 border-r border-blue-400/30">Department</th>
-                    <th className="p-3 border-r border-blue-400/30">User Type</th>
-                    <th className="p-3 border-r border-blue-400/30">User Level</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Total</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Resolved</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Pending</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Forwarded</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Does Not Pertain</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Remark Added</th>
-                    <th className="p-3 text-center border-r border-blue-400/30">Rejected</th>
-                    <th className="p-3 text-center">Appealed</th>
-                  </>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-slate-700 dark:text-slate-300 text-xs">
-              {data.map((row, idx) => (
-                <tr key={row.id || idx} className="hover:bg-blue-50/40 dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="p-3 text-center font-bold text-slate-500">
-                    {(currentPage - 1) * pageSize + idx + 1}
-                  </td>
 
+          {/* Action Export Buttons */}
+          <div className="flex items-center gap-2 self-end md:self-auto">
+            <button
+              onClick={fetchReportData}
+              title="Refresh Data"
+              className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-all border-0 cursor-pointer"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </button>
+
+            <button
+              onClick={exportToExcel}
+              title="Download Excel"
+              className="p-2 bg-[#4c3575] hover:bg-[#3d2a5e] text-white rounded-lg flex items-center justify-center border-0 cursor-pointer transition-all shadow-xs"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={exportToPDF}
+              title="Download PDF"
+              className="p-2 bg-[#212529] hover:bg-black text-white rounded-lg flex items-center justify-center border-0 cursor-pointer transition-all shadow-xs"
+            >
+              <FileText className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* ── SEARCH & PAGE SIZE CONTROLS ── */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 font-medium text-xs">Show</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+              className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 font-bold text-slate-800 dark:text-slate-200 outline-none text-xs"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="text-slate-500 font-medium text-xs">entries</span>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder={reportMode === 'department' ? "Search department..." : "Search..."}
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg pl-9 pr-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* ── MAIN TABLE DISPLAY ── */}
+        <div className="overflow-x-auto min-h-[350px] border border-slate-200 dark:border-slate-800 rounded-lg">
+          {isLoading ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+              <span className="font-bold text-slate-500 text-xs">Loading Status Wise Report...</span>
+            </div>
+          ) : error ? (
+            <div className="py-20 text-center text-rose-500 font-bold text-xs">{error}</div>
+          ) : data.length === 0 ? (
+            <div className="py-20 text-center text-slate-400 font-bold text-xs">
+              No Status Wise records found matching criteria.
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#1e88e5] text-white font-bold text-xs uppercase tracking-normal">
+                  <th className="p-2.5 w-12 text-center border-r border-blue-400/40">S. No.</th>
+                  
                   {reportMode === 'department' ? (
                     <>
-                      <td className="p-3 font-bold text-slate-900 dark:text-white uppercase">
-                        {row.departmentName || 'N/A'}
-                      </td>
-                      <td className="p-3 text-center font-extrabold text-blue-600 dark:text-blue-400">
-                        <button onClick={() => handleCellClick(row, 'all', 'Total')} className="hover:underline border-0 bg-transparent cursor-pointer font-extrabold text-blue-600 dark:text-blue-400">
-                          {row.totalCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-emerald-600 dark:text-emerald-400">
-                        <button onClick={() => handleCellClick(row, 'resolved', 'Resolved')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-emerald-600 dark:text-emerald-400">
-                          {row.resolvedCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-blue-600">
-                        <button onClick={() => handleCellClick(row, 'forwarded', 'Forwarded')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-blue-600">
-                          {row.forwardedCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-purple-600">
-                        <button onClick={() => handleCellClick(row, 'dnp', 'Does Not Pertain')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-purple-600">
-                          {row.dnpCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-amber-600">
-                        <button onClick={() => handleCellClick(row, 'pending', 'Pending')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-amber-600">
-                          {row.pendingCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-rose-600">
-                        <button onClick={() => handleCellClick(row, 'rejected', 'Rejected')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-rose-600">
-                          {row.rejectedCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-indigo-600">
-                        <button onClick={() => handleCellClick(row, 'appealed', 'Appealed')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-indigo-600">
-                          {row.appealedCount || 0}
-                        </button>
-                      </td>
+                      <th className="p-2.5 border-r border-blue-400/40">Department Name ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Total ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Resolved ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Forwarded ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40 whitespace-nowrap">Does Not Pertain ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Pending ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Rejected ⇅</th>
+                      <th className="p-2.5 text-center">Appealed ⇅</th>
                     </>
                   ) : (
                     <>
-                      <td className="p-3 font-bold text-slate-900 dark:text-white uppercase">
-                        {row.officerName || 'N/A'}
-                      </td>
-                      <td className="p-3 font-semibold text-slate-600 dark:text-slate-400">
-                        {row.officeAndDesignation || 'N/A'}
-                      </td>
-                      <td className="p-3 font-bold text-slate-800 dark:text-slate-200 uppercase">
-                        {row.departmentName || 'N/A'}
-                      </td>
-                      <td className="p-3 font-semibold text-purple-700 dark:text-purple-400">
-                        {row.userType || 'N/A'}
-                      </td>
-                      <td className="p-3">
-                        {row.userLevel || 'N/A'}
-                      </td>
-                      <td className="p-3 text-center font-extrabold text-blue-600 dark:text-blue-400">
-                        <button onClick={() => handleCellClick(row, 'all', 'Total')} className="hover:underline border-0 bg-transparent cursor-pointer font-extrabold text-blue-600 dark:text-blue-400">
-                          {row.totalCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-emerald-600 dark:text-emerald-400">
-                        <button onClick={() => handleCellClick(row, 'resolved', 'Resolved')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-emerald-600 dark:text-emerald-400">
-                          {row.resolvedCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-amber-600">
-                        <button onClick={() => handleCellClick(row, 'pending', 'Pending')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-amber-600">
-                          {row.pendingCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-blue-600">
-                        <button onClick={() => handleCellClick(row, 'forwarded', 'Forwarded')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-blue-600">
-                          {row.forwardedCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-purple-600">
-                        <button onClick={() => handleCellClick(row, 'dnp', 'Does Not Pertain')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-purple-600">
-                          {row.dnpCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-cyan-600">
-                        <button onClick={() => handleCellClick(row, 'remark', 'Remark Added')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-cyan-600">
-                          {row.remarkCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-rose-600">
-                        <button onClick={() => handleCellClick(row, 'rejected', 'Rejected')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-rose-600">
-                          {row.rejectedCount || 0}
-                        </button>
-                      </td>
-                      <td className="p-3 text-center font-bold text-indigo-600">
-                        <button onClick={() => handleCellClick(row, 'appealed', 'Appealed')} className="hover:underline border-0 bg-transparent cursor-pointer font-bold text-indigo-600">
-                          {row.appealedCount || 0}
-                        </button>
-                      </td>
+                      <th className="p-2.5 border-r border-blue-400/40 whitespace-nowrap">Officer Name ⇅</th>
+                      <th className="p-2.5 border-r border-blue-400/40">Office Name & Designation ⇅</th>
+                      <th className="p-2.5 border-r border-blue-400/40">Department ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40 whitespace-nowrap">User Type ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40 whitespace-nowrap">User Level ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Total ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Resolved ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Pending ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Forwarded ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40 whitespace-nowrap">Does Not Pertain ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40 whitespace-nowrap">Remark Added ⇅</th>
+                      <th className="p-2.5 text-center border-r border-blue-400/40">Rejected ⇅</th>
+                      <th className="p-2.5 text-center">Appealed ⇅</th>
                     </>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-normal text-slate-700 dark:text-slate-300 text-xs">
+                {data.map((row, idx) => (
+                  <tr 
+                    key={row.id || idx} 
+                    className={`${idx % 2 === 0 ? 'bg-[#f0f7ff] dark:bg-slate-900/60' : 'bg-white dark:bg-slate-900'} hover:bg-blue-100/60 dark:hover:bg-slate-800/60 transition-colors border-b border-slate-200 dark:border-slate-800`}
+                  >
+                    <td className="p-2.5 text-center text-slate-700 dark:text-slate-300 font-normal border-r border-slate-200 dark:border-slate-800">
+                      {(currentPage - 1) * pageSize + idx + 1}
+                    </td>
+
+                    {reportMode === 'department' ? (
+                      <>
+                        <td className="p-2.5 text-slate-800 dark:text-slate-100 uppercase font-medium border-r border-slate-200 dark:border-slate-800">
+                          {row.departmentName || 'N/A'}
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'all', 'Total')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.totalCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'resolved', 'Resolved')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.resolvedCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'forwarded', 'Forwarded')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.forwardedCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'dnp', 'Does Not Pertain')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.dnpCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'pending', 'Pending')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.pendingCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'rejected', 'Rejected')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.rejectedCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <button onClick={() => handleCellClick(row, 'appealed', 'Appealed')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.appealedCount || 0}
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="p-2.5 text-slate-800 dark:text-slate-100 font-normal uppercase border-r border-slate-200 dark:border-slate-800">
+                          {row.officerName || 'N/A'}
+                        </td>
+                        <td className="p-2.5 text-slate-600 dark:text-slate-300 font-normal border-r border-slate-200 dark:border-slate-800">
+                          {row.officeAndDesignation || 'N/A'}
+                        </td>
+                        <td className="p-2.5 text-slate-800 dark:text-slate-200 uppercase font-normal border-r border-slate-200 dark:border-slate-800">
+                          {row.departmentName || 'N/A'}
+                        </td>
+                        <td className="p-2.5 text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                          {row.userType || 'N/A'}
+                        </td>
+                        <td className="p-2.5 text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                          {row.userLevel || 'N/A'}
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'all', 'Total')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.totalCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'resolved', 'Resolved')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.resolvedCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'pending', 'Pending')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.pendingCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'forwarded', 'Forwarded')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.forwardedCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'dnp', 'Does Not Pertain')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.dnpCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'remark', 'Remark Added')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.remarkCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center border-r border-slate-200 dark:border-slate-800">
+                          <button onClick={() => handleCellClick(row, 'rejected', 'Rejected')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.rejectedCount || 0}
+                          </button>
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <button onClick={() => handleCellClick(row, 'appealed', 'Appealed')} className="text-[#0d6efd] hover:text-[#0b5ed7] underline font-normal cursor-pointer bg-transparent border-0 p-0 text-xs">
+                            {row.appealedCount || 0}
+                          </button>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+              {data.length > 0 && (
+                <tfoot className="bg-slate-100 dark:bg-slate-950 font-bold text-slate-900 dark:text-slate-100 border-t-2 border-slate-300 dark:border-slate-700 text-xs">
+                  {reportMode === 'department' ? (
+                    <tr>
+                      <td colSpan={2} className="p-2.5 text-center uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Total / Summary
+                      </td>
+                      <td className="p-2.5 text-center text-blue-600 dark:text-blue-400">
+                        {data.reduce((acc, r) => acc + (Number(r.totalCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-emerald-600 dark:text-emerald-400">
+                        {data.reduce((acc, r) => acc + (Number(r.resolvedCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-blue-600">
+                        {data.reduce((acc, r) => acc + (Number(r.forwardedCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-purple-600">
+                        {data.reduce((acc, r) => acc + (Number(r.dnpCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-amber-600">
+                        {data.reduce((acc, r) => acc + (Number(r.pendingCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-rose-600">
+                        {data.reduce((acc, r) => acc + (Number(r.rejectedCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-indigo-600">
+                        {data.reduce((acc, r) => acc + (Number(r.appealedCount) || 0), 0)}
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="p-2.5 text-center uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Total / Summary
+                      </td>
+                      <td className="p-2.5 text-center text-blue-600 dark:text-blue-400">
+                        {data.reduce((acc, r) => acc + (Number(r.totalCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-emerald-600 dark:text-emerald-400">
+                        {data.reduce((acc, r) => acc + (Number(r.resolvedCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-amber-600">
+                        {data.reduce((acc, r) => acc + (Number(r.pendingCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-blue-600">
+                        {data.reduce((acc, r) => acc + (Number(r.forwardedCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-purple-600">
+                        {data.reduce((acc, r) => acc + (Number(r.dnpCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-cyan-600">
+                        {data.reduce((acc, r) => acc + (Number(r.remarkCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-rose-600">
+                        {data.reduce((acc, r) => acc + (Number(r.rejectedCount) || 0), 0)}
+                      </td>
+                      <td className="p-2.5 text-center text-indigo-600">
+                        {data.reduce((acc, r) => acc + (Number(r.appealedCount) || 0), 0)}
+                      </td>
+                    </tr>
+                  )}
+                </tfoot>
+              )}
+            </table>
+          )}
+        </div>
       </div>
 
       {/* ── PAGINATION CONTROLS ── */}

@@ -18,8 +18,14 @@ import * as XLSX from 'xlsx';
 import axiosClient from '../../api/axiosClient';
 import adminService from '../../services/adminService';
 import geoService from '../../services/geoService';
+import { useAuth } from '../../context/AuthContext';
+import { normalizeRole } from '../../config/dashboardConfig';
 
 export default function DepartmentUserListReport() {
+  const { user } = useAuth();
+  const canonicalRole = normalizeRole(user);
+  const isDepartmentNodal = canonicalRole === 'DEPARTMENT' || (user?.department && !['SUPERADMIN', 'MONITORING_CELL', 'RMC', 'DM'].includes(canonicalRole));
+  const userDept = user?.department || user?.departmentName || '';
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -34,7 +40,13 @@ export default function DepartmentUserListReport() {
   const [sortDirection, setSortDirection] = useState('DESC');
 
   // Filter dropdown states
-  const [selectedDept, setSelectedDept] = useState('0');
+  const [selectedDept, setSelectedDept] = useState(() => (isDepartmentNodal && userDept) ? userDept : '0');
+
+  useEffect(() => {
+    if (isDepartmentNodal && userDept && selectedDept !== userDept) {
+      setSelectedDept(userDept);
+    }
+  }, [isDepartmentNodal, userDept]);
   const [selectedDeptType, setSelectedDeptType] = useState('0');
   const [selectedUserType, setSelectedUserType] = useState('0');
   const [selectedDistrict, setSelectedDistrict] = useState('0');
@@ -101,7 +113,7 @@ export default function DepartmentUserListReport() {
         district: selectedDistrict !== '0' ? selectedDistrict : ''
       });
 
-      const res = await axiosClient.get(`/super-admin/department-users?${params.toString()}`);
+      const res = await axiosClient.get(`/api/super-admin/department-users?${params.toString()}`);
       if (res.data) {
         setData(res.data.content || []);
         setTotalRecords(res.data.totalElements || 0);
@@ -149,7 +161,7 @@ export default function DepartmentUserListReport() {
         district: selectedDistrict !== '0' ? selectedDistrict : ''
       });
 
-      const res = await axiosClient.get(`/super-admin/department-users?${params.toString()}`);
+      const res = await axiosClient.get(`/api/super-admin/department-users?${params.toString()}`);
       const exportList = res.data?.content || data;
 
       const formattedData = exportList.map((row, idx) => ({
@@ -189,7 +201,7 @@ export default function DepartmentUserListReport() {
         district: selectedDistrict !== '0' ? selectedDistrict : ''
       });
 
-      const res = await axiosClient.get(`/super-admin/department-users?${params.toString()}`);
+      const res = await axiosClient.get(`/api/super-admin/department-users?${params.toString()}`);
       const exportList = res.data?.content || data;
 
       const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });

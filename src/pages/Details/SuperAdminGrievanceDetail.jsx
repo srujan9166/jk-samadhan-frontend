@@ -3,10 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Paperclip, Clock, ShieldAlert, CheckCircle, ExternalLink, HelpCircle } from 'lucide-react';
 import grievanceService from '../../services/grievanceService';
 import emblemImg from '../../assets/emblem.png';
+import { useAuth } from '../../context/AuthContext';
+import { normalizeRole } from '../../config/dashboardConfig';
 
 export default function SuperAdminGrievanceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canonicalRole = normalizeRole(user);
+  const isDepartmentUser = canonicalRole === 'DEPARTMENT' || (user?.department && !['SUPERADMIN', 'MONITORING_CELL', 'RMC', 'DM'].includes(canonicalRole));
+  const moduleTitle = isDepartmentUser ? 'Department Redressal Module' : '{moduleTitle}';
   
   const [grievance, setGrievance] = useState(null);
   const [isLoading, setIsLoading] = useState(true);

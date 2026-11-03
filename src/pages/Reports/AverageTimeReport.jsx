@@ -18,9 +18,15 @@ import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
+import { useAuth } from '../../context/AuthContext';
+import { normalizeRole } from '../../config/dashboardConfig';
 
 export default function AverageTimeReport() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canonicalRole = normalizeRole(user);
+  const isDepartmentNodal = canonicalRole === 'DEPARTMENT' || (user?.department && !['SUPERADMIN', 'MONITORING_CELL', 'RMC', 'DM'].includes(canonicalRole));
+  const userDept = user?.department || user?.departmentName || '';
 
   // Mode: 'department' or 'district'
   const [reportMode, setReportMode] = useState('department');
@@ -28,7 +34,13 @@ export default function AverageTimeReport() {
   // Master Lists for Dropdown Filters
   const [departments, setDepartments] = useState([]);
   const [districts, setDistricts] = useState([]);
-  const [selectedDepartment, setSelectedDepartment] = useState('0');
+  const [selectedDepartment, setSelectedDepartment] = useState(() => (isDepartmentNodal && userDept) ? userDept : '0');
+
+  useEffect(() => {
+    if (isDepartmentNodal && userDept && selectedDepartment !== userDept) {
+      setSelectedDepartment(userDept);
+    }
+  }, [isDepartmentNodal, userDept]);
   const [selectedDistrict, setSelectedDistrict] = useState('0');
 
   // Main Report State

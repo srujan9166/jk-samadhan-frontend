@@ -55,6 +55,13 @@ export default function AppellateReport() {
   const fetchReportData = async () => {
     setIsLoading(true);
     setError(null);
+
+    if (fromDate && toDate && fromDate > toDate) {
+      setError('From date cannot be after To date.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const params = new URLSearchParams({
         departmentType: departmentType || '',
@@ -73,7 +80,8 @@ export default function AppellateReport() {
       }
     } catch (err) {
       console.error('Error fetching Appellate Report:', err);
-      setError('Failed to load Appellate Report records.');
+      const errMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to load Appellate Report records.';
+      setError(errMsg);
     } finally {
       setIsLoading(false);
     }

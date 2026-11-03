@@ -106,7 +106,7 @@ const grievanceService = {
     const response = await axiosClient.get(`/api/super-admin/export/excel/${jobId}/download`, {
       responseType: 'blob'
     });
-    
+
     let filename = defaultFileName;
     const contentDisposition = response.headers && (response.headers['content-disposition'] || response.headers['Content-Disposition']);
     if (contentDisposition) {
@@ -134,7 +134,7 @@ const grievanceService = {
     setTimeout(() => {
       try {
         window.URL.revokeObjectURL(url);
-      } catch (ignored) {}
+      } catch (ignored) { }
     }, 60000);
 
     return true;
@@ -159,7 +159,7 @@ const grievanceService = {
     const response = await axiosClient.get(`/api/super-admin/export/pdf/${jobId}/download`, {
       responseType: 'blob'
     });
-    
+
     let filename = defaultFileName;
     const contentDisposition = response.headers && (response.headers['content-disposition'] || response.headers['Content-Disposition']);
     if (contentDisposition) {
@@ -186,7 +186,7 @@ const grievanceService = {
     setTimeout(() => {
       try {
         window.URL.revokeObjectURL(url);
-      } catch (ignored) {}
+      } catch (ignored) { }
     }, 60000);
 
     return true;
@@ -229,6 +229,36 @@ const grievanceService = {
 
   getFeedbackMisReport: async (params) => {
     const response = await axiosClient.get('/api/super-admin/feedback/mis-report', { params });
+    return response.data;
+  },
+
+  getNewFeedbackDeptMIS: async (params) => {
+    const response = await axiosClient.get('/api/super-admin/feedback/new-mis-department', { params });
+    return response.data;
+  },
+
+  getNewFeedbackIndividual: async (params) => {
+    const response = await axiosClient.get('/api/super-admin/feedback/new-mis-individual', { params });
+    return response.data;
+  },
+
+  getLegacyFeedbackDeptMIS: async (params) => {
+    const response = await axiosClient.get('/api/super-admin/feedback/legacy-mis-department', { params });
+    return response.data;
+  },
+
+  getLegacyFeedbackIndividual: async (params) => {
+    const response = await axiosClient.get('/api/super-admin/feedback/legacy-mis-individual', { params });
+    return response.data;
+  },
+
+  getAgeAnalysisReport: async (params) => {
+    const response = await axiosClient.get('/api/super-admin/age-analysis-report', { params });
+    return response.data;
+  },
+
+  getAgeAnalysisDetails: async (params) => {
+    const response = await axiosClient.get('/api/super-admin/age-analysis-report/details', { params });
     return response.data;
   }
 };

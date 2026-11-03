@@ -49,13 +49,14 @@ export function DashboardRenderer(props) {
     );
   }
 
-  // Administrative, Oversight, District, and Operations Roles
-  // SuperAdmin, Monitoring Cell, RMC, and DM utilize the unified extensible dashboard
+  // Administrative, Oversight, District, Department Nodal, and Operations Roles
+  // SuperAdmin, Monitoring Cell, RMC, DM, and Department Nodal utilize the unified common authenticated shell
   if (
     role === 'SUPERADMIN' ||
     role === 'MONITORING_CELL' ||
     role === 'RMC' ||
-    role === 'DM'
+    role === 'DM' ||
+    role === 'DEPARTMENT'
   ) {
     return (
       <SuperAdminDashboard 
@@ -64,19 +65,6 @@ export function DashboardRenderer(props) {
         onLogout={logout} 
         normalizedRole={role}
         initialView={props.initialView}
-        {...props} 
-      />
-    );
-  }
-
-  // Department Nodal / Officer Workflow
-  if (role === 'DEPARTMENT') {
-    return (
-      <DeptDashboard 
-        key={userKey}
-        user={user} 
-        onLogout={logout} 
-        normalizedRole={role}
         {...props} 
       />
     );

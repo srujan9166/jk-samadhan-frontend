@@ -8,18 +8,15 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Loader2, 
-  Star, 
+  X, 
+  Eye, 
   ThumbsUp, 
   PhoneCall, 
-  BarChart3, 
-  PieChart as PieIcon, 
-  Filter, 
-  X, 
-  ExternalLink,
+  Star, 
   Award,
   TrendingUp,
-  AlertTriangle,
-  UserCheck
+  AlertCircle,
+  BarChart3
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
@@ -27,19 +24,38 @@ import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import grievanceService from '../../services/grievanceService';
 import axiosClient from '../../api/axiosClient';
+import { useAuth } from '../../context/AuthContext';
+import { normalizeRole } from '../../config/dashboardConfig';
+import { 
+  DonutChart, 
+  BarChart, 
+  ChartCard, 
+  DepartmentComparisonBarChart 
+} from '../../components/charts';
 
 export default function FeedbackAnalysis() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canonicalRole = normalizeRole(user);
+  const isDepartmentNodal = canonicalRole === 'DEPARTMENT' || (user?.department && !['SUPERADMIN', 'MONITORING_CELL', 'RMC', 'DM'].includes(canonicalRole));
+  const userDept = user?.department || user?.departmentName || '';
 
-  // Section toggle: 'feedback' or 'mis'
+  // Top Section Toggle: 'feedback' (Feedback Analysis Section) vs 'mis' (MIS REPORT)
   const [activeSection, setActiveSection] = useState('feedback');
 
-  // Master Data options for filters
+  // Master Data Options
   const [departmentList, setDepartmentList] = useState([]);
   const [districtList, setDistrictList] = useState([]);
+  const [categoryList, setCategoryList] = useState([]);
 
-  // Filter States
-  const [selectedDept, setSelectedDept] = useState('0');
+  // Shared / Feedback Filters
+  const [selectedDept, setSelectedDept] = useState(() => (isDepartmentNodal && userDept) ? userDept : '0');
+
+  useEffect(() => {
+    if (isDepartmentNodal && userDept && selectedDept !== userDept) {
+      setSelectedDept(userDept);
+    }
+  }, [isDepartmentNodal, userDept]);
   const [selectedDistrict, setSelectedDistrict] = useState('0');
   const [selectedCategory, setSelectedCategory] = useState('0');
   const [selectedGender, setSelectedGender] = useState('0');
@@ -47,11 +63,41 @@ export default function FeedbackAnalysis() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  // Summary KPI & Chart Data
+  // Summary KPI & Chart Data (Feedback Section)
   const [summary, setSummary] = useState(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
 
-  // Table Data State (Feedback List)
+  // Department Comparison Data (For Bar Chart Comparison)
+  const [deptComparisonList, setDeptComparisonList] = useState([]);
+
+  // Chart View Options (donut vs bar, both vs percent vs count)
+  const [chartTypes, setChartTypes] = useState({
+    q1: 'donut',
+    q2: 'donut',
+    q3: 'donut',
+    q4: 'donut',
+    q5: 'donut'
+  });
+  const [displayModes, setDisplayModes] = useState({
+    q1: 'both',
+    q2: 'both',
+    q3: 'both',
+    q4: 'both',
+    q5: 'both'
+  });
+
+  const toggleChartType = (key, type) => {
+    setChartTypes((prev) => ({ ...prev, [key]: type }));
+  };
+
+  const toggleDisplayMode = (key) => {
+    setDisplayModes((prev) => ({
+      ...prev,
+      [key]: prev[key] === 'percent' ? 'count' : 'percent'
+    }));
+  };
+
+  // Table 1 Data: Individual Feedback Records (Feedback Section)
   const [feedbackList, setFeedbackList] = useState([]);
   const [isListLoading, setIsListLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,23 +106,39 @@ export default function FeedbackAnalysis() {
   const [totalPages, setTotalPages] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // MIS Report Data State
-  const [misList, setMisList] = useState([]);
-  const [isMisLoading, setIsMisLoading] = useState(false);
+  // MIS REPORT INDIVIDUAL State (MIS Section)
+  const [misIndvData, setMisIndvData] = useState([]);
+  const [isMisIndvLoading, setIsMisIndvLoading] = useState(false);
+  const [misIndvPage, setMisIndvPage] = useState(1);
+  const [misIndvSize, setMisIndvSize] = useState(10);
+  const [misIndvTotalRecords, setMisIndvTotalRecords] = useState(0);
+  const [misIndvTotalPages, setMisIndvTotalPages] = useState(0);
+  const [misIndvSearch, setMisIndvSearch] = useState('');
 
-  // Modal State for Viewing Single Feedback Detail
+  // MIS REPORT DEPARTMENT WISE State (MIS Section)
+  const [misDeptData, setMisDeptData] = useState([]);
+  const [isMisDeptLoading, setIsMisDeptLoading] = useState(false);
+  const [misDeptPage, setMisDeptPage] = useState(1);
+  const [misDeptSize, setMisDeptSize] = useState(10);
+  const [misDeptTotalRecords, setMisDeptTotalRecords] = useState(0);
+  const [misDeptTotalPages, setMisDeptTotalPages] = useState(0);
+  const [misDeptSearch, setMisDeptSearch] = useState('');
+
+  // Modal State for Viewing Single Feedback Form Preview
   const [selectedFeedback, setSelectedFeedback] = useState(null);
 
-  // Fetch Master Data (Departments & Districts)
+  // Fetch Master Data (Departments, Districts, Categories)
   useEffect(() => {
     const fetchMasterData = async () => {
       try {
-        const [deptRes, distRes] = await Promise.all([
+        const [deptRes, distRes, catRes] = await Promise.all([
           axiosClient.get('/api/master/departments').catch(() => ({ data: [] })),
-          axiosClient.get('/api/master/districts').catch(() => ({ data: [] }))
+          axiosClient.get('/api/master/districts').catch(() => ({ data: [] })),
+          axiosClient.get('/api/master/categories').catch(() => ({ data: [] }))
         ]);
         if (Array.isArray(deptRes.data)) setDepartmentList(deptRes.data);
         if (Array.isArray(distRes.data)) setDistrictList(distRes.data);
+        if (Array.isArray(catRes.data)) setCategoryList(catRes.data);
       } catch (err) {
         console.error('Error fetching master data:', err);
       }
@@ -84,8 +146,8 @@ export default function FeedbackAnalysis() {
     fetchMasterData();
   }, []);
 
-  // Fetch Summary Data
-  const fetchSummary = async () => {
+  // Fetch Summary Data & Department Comparison List
+  const fetchSummaryAndComparison = async () => {
     setIsSummaryLoading(true);
     try {
       const params = {
@@ -97,16 +159,22 @@ export default function FeedbackAnalysis() {
         dateFrom,
         dateTo
       };
-      const res = await grievanceService.getFeedbackSummary(params);
-      if (res) setSummary(res);
+      
+      const [summaryRes, deptRes] = await Promise.all([
+        grievanceService.getFeedbackSummary(params),
+        grievanceService.getLegacyFeedbackDeptMIS({ department: '', page: 0, size: 100 }).catch(() => null)
+      ]);
+
+      if (summaryRes) setSummary(summaryRes);
+      if (deptRes && deptRes.content) setDeptComparisonList(deptRes.content);
     } catch (err) {
-      console.error('Error fetching Feedback Summary:', err);
+      console.error('Error fetching Feedback Summary / Comparison:', err);
     } finally {
       setIsSummaryLoading(false);
     }
   };
 
-  // Fetch Feedback List Data
+  // Fetch Feedback Records List (Feedback Section)
   const fetchFeedbackList = async () => {
     setIsListLoading(true);
     try {
@@ -135,37 +203,81 @@ export default function FeedbackAnalysis() {
     }
   };
 
-  // Fetch MIS Report Data
-  const fetchMisReport = async () => {
-    setIsMisLoading(true);
+  // Fetch Legacy MIS REPORT INDIVIDUAL
+  const fetchLegacyMisIndividual = async () => {
+    setIsMisIndvLoading(true);
     try {
       const params = {
         department: selectedDept !== '0' ? selectedDept : '',
-        district: selectedDistrict !== '0' ? selectedDistrict : '',
-        dateFrom,
-        dateTo
+        search: misIndvSearch || '',
+        page: misIndvPage - 1,
+        size: misIndvSize
       };
-      const res = await grievanceService.getFeedbackMisReport(params);
-      if (Array.isArray(res)) setMisList(res);
+      const res = await grievanceService.getLegacyFeedbackIndividual(params);
+      if (res) {
+        setMisIndvData(res.content || []);
+        setMisIndvTotalRecords(res.totalElements || 0);
+        setMisIndvTotalPages(res.totalPages || 0);
+      }
     } catch (err) {
-      console.error('Error fetching MIS report:', err);
+      console.error('Error fetching Legacy MIS Individual report:', err);
     } finally {
-      setIsMisLoading(false);
+      setIsMisIndvLoading(false);
     }
   };
 
-  // Trigger Data Fetching on filter change
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchSummary();
-      if (activeSection === 'feedback') {
-        fetchFeedbackList();
-      } else {
-        fetchMisReport();
+  // Fetch Legacy MIS REPORT DEPARTMENT WISE
+  const fetchLegacyMisDept = async () => {
+    setIsMisDeptLoading(true);
+    try {
+      const params = {
+        department: selectedDept !== '0' ? selectedDept : '',
+        search: misDeptSearch || '',
+        page: misDeptPage - 1,
+        size: misDeptSize
+      };
+      const res = await grievanceService.getLegacyFeedbackDeptMIS(params);
+      if (res) {
+        setMisDeptData(res.content || []);
+        setMisDeptTotalRecords(res.totalElements || 0);
+        setMisDeptTotalPages(res.totalPages || 0);
       }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [selectedDept, selectedDistrict, selectedCategory, selectedGender, selectedSatisfaction, dateFrom, dateTo, searchQuery, currentPage, pageSize, activeSection]);
+    } catch (err) {
+      console.error('Error fetching Legacy MIS Department report:', err);
+    } finally {
+      setIsMisDeptLoading(false);
+    }
+  };
+
+  // Reactive Effect for Feedback Analysis Section
+  useEffect(() => {
+    if (activeSection === 'feedback') {
+      const timer = setTimeout(() => {
+        fetchSummaryAndComparison();
+        fetchFeedbackList();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeSection, selectedDept, selectedDistrict, selectedCategory, selectedGender, selectedSatisfaction, dateFrom, dateTo, searchQuery, currentPage, pageSize]);
+
+  // Reactive Effect for Legacy MIS Section
+  useEffect(() => {
+    if (activeSection === 'mis') {
+      const timer = setTimeout(() => {
+        fetchLegacyMisIndividual();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeSection, selectedDept, misIndvSearch, misIndvPage, misIndvSize]);
+
+  useEffect(() => {
+    if (activeSection === 'mis') {
+      const timer = setTimeout(() => {
+        fetchLegacyMisDept();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [activeSection, selectedDept, misDeptSearch, misDeptPage, misDeptSize]);
 
   const handleResetFilters = () => {
     setSelectedDept('0');
@@ -176,702 +288,1350 @@ export default function FeedbackAnalysis() {
     setDateFrom('');
     setDateTo('');
     setSearchQuery('');
+    setMisIndvSearch('');
+    setMisDeptSearch('');
+    setCurrentPage(1);
+    setMisIndvPage(1);
+    setMisDeptPage(1);
+  };
+
+  // 5 Legacy Charts Data
+  // Chart 1: Solution Satisfied
+  const chartSolutionData = [
+    { label: 'Yes', value: summary?.satisfiedYesCount || 0, color: '#10b981' },
+    { label: 'No', value: summary?.satisfiedNoCount || 0, color: '#ef4444' }
+  ];
+
+  // Chart 2: Call Received
+  const chartCallData = [
+    { label: 'Yes', value: summary?.callReceivedYesCount || 0, color: '#0ea5e9' },
+    { label: 'No', value: summary?.callReceivedNoCount || 0, color: '#f43f5e' }
+  ];
+
+  // Chart 3: Overall Experience (Rating 1)
+  const chartExpData = [
+    { label: '6-10', value: summary?.rating1_6_10Count || 0, color: '#3b82f6' },
+    { label: '1-5', value: summary?.rating1_1_5Count || 0, color: '#f59e0b' }
+  ];
+
+  // Chart 4: Lodging Process (Rating 2)
+  const chartLodgingData = [
+    { label: '6-10', value: summary?.rating2_6_10Count || 0, color: '#06b6d4' },
+    { label: '1-5', value: summary?.rating2_1_5Count || 0, color: '#8b5cf6' }
+  ];
+
+  // Chart 5: Portal Recommendation
+  const chartRecommendData = [
+    { label: 'Yes Definitely', value: summary?.recommendYesCount || 0, color: '#10b981' },
+    { label: 'Maybe, If It Takes Less Time', value: summary?.recommendMaybeTimeCount || 0, color: '#3b82f6' },
+    { label: 'No, Never', value: summary?.recommendNoCount || 0, color: '#ef4444' },
+    { label: 'Maybe, If The Process Changed', value: summary?.recommendMaybeProcessCount || 0, color: '#f59e0b' }
+  ];
+
+  // Handle Chart Slice Click Drill-Down
+  const handleSliceClick = (label) => {
+    if (selectedSatisfaction === label) {
+      setSelectedSatisfaction('0');
+    } else {
+      setSelectedSatisfaction(label);
+    }
     setCurrentPage(1);
   };
 
-  // Export Feedback Table to Excel
+  // ==========================================
+  // EXPORTS
+  // ==========================================
+
+  // Export Feedback Records Table (Excel)
   const exportFeedbackExcel = () => {
     const exportData = feedbackList.map((item, idx) => ({
       'S. No.': (currentPage - 1) * pageSize + idx + 1,
       'Grievance ID': item.uniqId || 'N/A',
-      'Complainant Name': item.complainantName || 'N/A',
-      'Mobile': item.complainantMobile || 'N/A',
       'Department': item.department || 'N/A',
-      'Category': item.category || 'N/A',
-      'District': item.district || 'N/A',
-      'Disposal Experience': item.overallExperience || 'N/A',
+      'Main Category': item.category || 'N/A',
+      'Feedback Date': item.createdAt || 'N/A',
+      'Gender': item.gender || 'N/A',
       'Solution Satisfied': item.satisfied || 'N/A',
       'Call Received': item.callReceived || 'N/A',
-      'Time Satisfaction': item.timeSatisfaction || 'N/A',
-      'Submitted Date': item.createdAt || 'N/A',
-      'Comments': item.description || item.poorReason || 'N/A'
+      'Overall Experience': item.rating1 || item.overallExperience || 'N/A',
+      'Lodging Process': item.rating2 || 'N/A',
+      'Recommendation': item.reusePortal || 'N/A'
     }));
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Feedback_Data');
-    XLSX.writeFile(workbook, `Feedback_Analysis_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Feedback_Records');
+    XLSX.writeFile(wb, `Feedback_Records_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  // Export Feedback Table to PDF
+  // Export Feedback Records Table (PDF)
   const exportFeedbackPDF = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(14);
-    doc.text('Feedback Analysis Report', 14, 15);
+    doc.text('Feedback Analysis Section - Records', 14, 15);
     doc.setFontSize(9);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
 
-    const headers = [['S. No.', 'Grievance ID', 'Complainant', 'Department', 'Experience', 'Satisfied', 'Call Received', 'Date']];
+    const headers = [['S. No.', 'Grievance ID', 'Department', 'Category', 'Feedback Date', 'Gender', 'Satisfied', 'Call Received', 'Rating 1', 'Rating 2']];
     const rows = feedbackList.map((item, idx) => [
       (currentPage - 1) * pageSize + idx + 1,
       item.uniqId || 'N/A',
-      item.complainantName || 'N/A',
       item.department || 'N/A',
-      item.overallExperience || 'N/A',
+      item.category || 'N/A',
+      item.createdAt || 'N/A',
+      item.gender || 'N/A',
       item.satisfied || 'N/A',
       item.callReceived || 'N/A',
-      item.createdAt || 'N/A'
+      item.rating1 || 'N/A',
+      item.rating2 || 'N/A'
     ]);
 
     doc.autoTable({
       head: headers,
       body: rows,
       startY: 28,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [30, 58, 138] }
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246] },
+      styles: { fontSize: 8 }
     });
 
-    doc.save('Feedback_Analysis_Report.pdf');
+    doc.save(`Feedback_Records_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  // Export MIS Table to Excel
-  const exportMisExcel = () => {
-    const exportData = misList.map((item, idx) => ({
-      'S. No.': idx + 1,
-      'Department Name': item.department,
-      'Total Feedback': item.totalGrievances,
-      'Satisfied Yes (%)': item.satisfiedYesPercent,
-      'Satisfied No (%)': item.satisfiedNoPercent,
-      'Call Received Yes (%)': item.callReceivedYesPercent,
-      'Call Received No (%)': item.callReceivedNoPercent,
-      'Experience Excellent (%)': item.experienceExcellentPercent,
-      'Experience Good (%)': item.experienceGoodPercent,
-      'Experience Average (%)': item.experienceAveragePercent,
-      'Experience Poor (%)': item.experiencePoorPercent
+  // Export Legacy MIS Individual (Excel)
+  const exportLegacyMisIndvExcel = () => {
+    const exportData = misIndvData.map((item, idx) => ({
+      'S. No.': (misIndvPage - 1) * misIndvSize + idx + 1,
+      'Name of the Department': item.departmentName || 'N/A',
+      'Grievance ID': item.grievanceId || 'N/A',
+      'Name of Complainant': item.complainantName || 'N/A',
+      'Contact No. of the Complainant': item.contactNo || 'N/A',
+      'Grievance closed by': item.closedBy || 'N/A',
+      'Satisfied Yes': item.satisfiedYes || 'No',
+      'Satisfied No': item.satisfiedNo || 'No',
+      'Call Received Yes': item.callReceivedYes || 'No',
+      'Call Received No': item.callReceivedNo || 'No',
+      'Experience 1-5': item.rating1_1_5 || 'No',
+      'Experience 6-10': item.rating1_6_10 || 'No',
+      'Lodging 1-5': item.rating2_1_5 || 'No',
+      'Lodging 6-10': item.rating2_6_10 || 'No',
+      'Recommend Yes Definitely': item.recommendYes || 'No',
+      'Recommend Maybe Less Time': item.recommendMaybeTime || 'No',
+      'Recommend No Never': item.recommendNo || 'No',
+      'Recommend Maybe Process Changed': item.recommendMaybeProcess || 'No'
     }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Legacy_MIS_Individual');
+    XLSX.writeFile(wb, `Legacy_MIS_Individual_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'MIS_Feedback_Report');
-    XLSX.writeFile(workbook, `Feedback_MIS_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+  // Export Legacy MIS Individual (PDF)
+  const exportLegacyMisIndvPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', format: 'a3' });
+    doc.setFontSize(14);
+    doc.text('MIS REPORT INDIVIDUAL', 14, 15);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
+
+    const headers = [
+      [
+        { content: 'S. No.', rowSpan: 2 },
+        { content: 'Name of the Department', rowSpan: 2 },
+        { content: 'Grievance ID', rowSpan: 2 },
+        { content: 'Name of Complainant', rowSpan: 2 },
+        { content: 'Contact No.', rowSpan: 2 },
+        { content: 'Grievance closed by', rowSpan: 2 },
+        { content: 'Satisfied?', colSpan: 2 },
+        { content: 'Call Received?', colSpan: 2 },
+        { content: 'Overall Experience', colSpan: 2 },
+        { content: 'Lodging Process', colSpan: 2 },
+        { content: 'Recommend Portal?', colSpan: 4 }
+      ],
+      [
+        'Yes', 'No',
+        'Yes', 'No',
+        '1-5', '6-10',
+        '1-5', '6-10',
+        'Yes Def', 'Maybe Time', 'No Never', 'Maybe Proc'
+      ]
+    ];
+
+    const rows = misIndvData.map((item, idx) => [
+      (misIndvPage - 1) * misIndvSize + idx + 1,
+      item.departmentName || 'N/A',
+      item.grievanceId || 'N/A',
+      item.complainantName || 'N/A',
+      item.contactNo || 'N/A',
+      item.closedBy || 'N/A',
+      item.satisfiedYes || 'No',
+      item.satisfiedNo || 'No',
+      item.callReceivedYes || 'No',
+      item.callReceivedNo || 'No',
+      item.rating1_1_5 || 'No',
+      item.rating1_6_10 || 'No',
+      item.rating2_1_5 || 'No',
+      item.rating2_6_10 || 'No',
+      item.recommendYes || 'No',
+      item.recommendMaybeTime || 'No',
+      item.recommendNo || 'No',
+      item.recommendMaybeProcess || 'No'
+    ]);
+
+    doc.autoTable({
+      head: headers,
+      body: rows,
+      startY: 28,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246] },
+      styles: { fontSize: 7 }
+    });
+
+    doc.save(`MIS_Report_Individual_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  // Export Legacy MIS Department Wise (Excel)
+  const exportLegacyMisDeptExcel = () => {
+    const exportData = misDeptData.map((item, idx) => ({
+      'S. No.': (misDeptPage - 1) * misDeptSize + idx + 1,
+      'Name of the Department': item.departmentName || 'N/A',
+      'No. of Grievances with Feedback': item.totalFeedbackCount || 0,
+      'Satisfied Yes (%)': (item.satisfiedYesPct || 0).toFixed(2),
+      'Satisfied No (%)': (item.satisfiedNoPct || 0).toFixed(2),
+      'Call Received Yes (%)': (item.callReceivedYesPct || 0).toFixed(2),
+      'Call Received No (%)': (item.callReceivedNoPct || 0).toFixed(2),
+      'Experience 1-5 (%)': (item.rating1_1_5Pct || 0).toFixed(2),
+      'Experience 6-10 (%)': (item.rating1_6_10Pct || 0).toFixed(2),
+      'Lodging 1-5 (%)': (item.rating2_1_5Pct || 0).toFixed(2),
+      'Lodging 6-10 (%)': (item.rating2_6_10Pct || 0).toFixed(2),
+      'Recommend Yes Definitely (%)': (item.recommendYesPct || 0).toFixed(2),
+      'Recommend Maybe Less Time (%)': (item.recommendMaybeTimePct || 0).toFixed(2),
+      'Recommend No Never (%)': (item.recommendNoPct || 0).toFixed(2),
+      'Recommend Maybe Process Changed (%)': (item.recommendMaybeProcessPct || 0).toFixed(2)
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Legacy_MIS_Dept_Wise');
+    XLSX.writeFile(wb, `Legacy_MIS_Dept_Wise_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // Export Legacy MIS Department Wise (PDF)
+  const exportLegacyMisDeptPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', format: 'a3' });
+    doc.setFontSize(14);
+    doc.text('MIS REPORT DEPARTMENT WISE', 14, 15);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 22);
+
+    const headers = [
+      [
+        { content: 'S. No.', rowSpan: 2 },
+        { content: 'Name of the Department', rowSpan: 2 },
+        { content: 'Total Feedback', rowSpan: 2 },
+        { content: 'Satisfied?', colSpan: 2 },
+        { content: 'Call Received?', colSpan: 2 },
+        { content: 'Overall Experience', colSpan: 2 },
+        { content: 'Lodging Process', colSpan: 2 },
+        { content: 'Recommend Portal?', colSpan: 4 }
+      ],
+      [
+        'Yes (%)', 'No (%)',
+        'Yes (%)', 'No (%)',
+        '1-5 (%)', '6-10 (%)',
+        '1-5 (%)', '6-10 (%)',
+        'Yes Def(%)', 'Maybe Time(%)', 'No Never(%)', 'Maybe Proc(%)'
+      ]
+    ];
+
+    const rows = misDeptData.map((item, idx) => [
+      (misDeptPage - 1) * misDeptSize + idx + 1,
+      item.departmentName || 'N/A',
+      item.totalFeedbackCount || 0,
+      `${(item.satisfiedYesPct || 0).toFixed(1)}%`,
+      `${(item.satisfiedNoPct || 0).toFixed(1)}%`,
+      `${(item.callReceivedYesPct || 0).toFixed(1)}%`,
+      `${(item.callReceivedNoPct || 0).toFixed(1)}%`,
+      `${(item.rating1_1_5Pct || 0).toFixed(1)}%`,
+      `${(item.rating1_6_10Pct || 0).toFixed(1)}%`,
+      `${(item.rating2_1_5Pct || 0).toFixed(1)}%`,
+      `${(item.rating2_6_10Pct || 0).toFixed(1)}%`,
+      `${(item.recommendYesPct || 0).toFixed(1)}%`,
+      `${(item.recommendMaybeTimePct || 0).toFixed(1)}%`,
+      `${(item.recommendNoPct || 0).toFixed(1)}%`,
+      `${(item.recommendMaybeProcessPct || 0).toFixed(1)}%`
+    ]);
+
+    doc.autoTable({
+      head: headers,
+      body: rows,
+      startY: 28,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246] },
+      styles: { fontSize: 7 }
+    });
+
+    doc.save(`MIS_Report_Dept_Wise_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
-    <div className="space-y-6 text-left animate-fadeIn">
-      {/* Header & Radio Section Toggle */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-blue-50 dark:bg-blue-950/40 text-blue-600 rounded-xl">
-                <MessageSquare className="w-5 h-5" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">
-                Feedback Analysis
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Comprehensive citizen feedback metrics, rating distributions, and department MIS reporting.
-            </p>
-          </div>
+    <div className="space-y-6 pb-12">
+      {/* Top Breadcrumb Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2 tracking-tight">
+            <span>Dashboard</span>
+            <span className="text-slate-400 font-light text-lg">|</span>
+            <span className="text-[#3b82f6] text-lg font-bold">Feedback Analysis</span>
+          </h2>
+        </div>
+      </div>
 
-          {/* Radio Button Toggle: Feedback Analysis vs MIS Report */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700/60 self-start md:self-auto">
-            <label 
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                activeSection === 'feedback'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              <input 
-                type="radio" 
-                name="mainFeedbackReportType" 
-                value="feedback" 
-                checked={activeSection === 'feedback'} 
-                onChange={() => setActiveSection('feedback')} 
-                className="hidden" 
+      {/* FILTER & TOGGLE SECTION */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
+        
+        {/* Radio Button Toggle: Feedback Analysis Section vs MIS REPORT */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="inline-flex items-center gap-6">
+            <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+              <input
+                type="radio"
+                name="mainReportType"
+                value="feedback"
+                checked={activeSection === 'feedback'}
+                onChange={() => setActiveSection('feedback')}
+                className="w-4 h-4 text-blue-600 focus:ring-0 cursor-pointer"
               />
-              <BarChart3 className="w-4 h-4" />
               <span>Feedback Analysis Section</span>
             </label>
 
-            <label 
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                activeSection === 'mis'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              <input 
-                type="radio" 
-                name="mainFeedbackReportType" 
-                value="mis" 
-                checked={activeSection === 'mis'} 
-                onChange={() => setActiveSection('mis')} 
-                className="hidden" 
+            <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
+              <input
+                type="radio"
+                name="mainReportType"
+                value="mis"
+                checked={activeSection === 'mis'}
+                onChange={() => setActiveSection('mis')}
+                className="w-4 h-4 text-blue-600 focus:ring-0 cursor-pointer"
               />
-              <FileSpreadsheet className="w-4 h-4" />
               <span>MIS REPORT</span>
             </label>
           </div>
         </div>
 
-        {/* Filters Grid */}
-        <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {/* Department Filter */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Department</label>
-            <select
-              value={selectedDept}
-              onChange={(e) => { setSelectedDept(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="0">All Departments</option>
-              {departmentList.map((d) => (
-                <option key={d.id || d.name} value={d.name}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* District Filter */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">District</label>
-            <select
-              value={selectedDistrict}
-              onChange={(e) => { setSelectedDistrict(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="0">All Districts</option>
-              {districtList.map((d) => (
-                <option key={d.id || d.name} value={d.name}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Gender Filter */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Gender</label>
-            <select
-              value={selectedGender}
-              onChange={(e) => { setSelectedGender(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="0">All Genders</option>
-              <option value="MALE">Male</option>
-              <option value="FEMALE">Female</option>
-              <option value="TRANSGENDER">Transgender</option>
-            </select>
-          </div>
-
-          {/* Disposal Satisfaction Filter */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">Satisfaction Level</label>
-            <select
-              value={selectedSatisfaction}
-              onChange={(e) => { setSelectedSatisfaction(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              <option value="0">All Satisfaction</option>
-              <option value="Excellent">Excellent</option>
-              <option value="Good">Good</option>
-              <option value="Average">Average</option>
-              <option value="Poor">Poor</option>
-            </select>
-          </div>
-
-          {/* Date From */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">From Date</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-
-          {/* Date To */}
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">To Date</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
-              className="w-full px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-        </div>
-
-        {/* Reset Filters */}
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={handleResetFilters}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Reset Filters</span>
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Feedback */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total Feedbacks</p>
-            <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">
-              {isSummaryLoading ? '...' : summary?.totalFeedbacks || 0}
-            </h3>
-          </div>
-          <div className="p-3 bg-blue-50 dark:bg-blue-950/40 text-blue-600 rounded-2xl">
-            <MessageSquare className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Satisfied Rate */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Solution Satisfied</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                {isSummaryLoading ? '...' : `${summary?.satisfiedYesPercent || 0}%`}
-              </h3>
-              <span className="text-[11px] font-bold text-slate-400">({summary?.satisfiedYesCount || 0} Yes)</span>
-            </div>
-          </div>
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-2xl">
-            <ThumbsUp className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Call Received Rate */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Dept Contacted</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <h3 className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
-                {isSummaryLoading ? '...' : `${summary?.callReceivedYesPercent || 0}%`}
-              </h3>
-              <span className="text-[11px] font-bold text-slate-400">({summary?.callReceivedYesCount || 0} Yes)</span>
-            </div>
-          </div>
-          <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 rounded-2xl">
-            <PhoneCall className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Average Rating */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-          <div>
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Avg Experience Score</p>
-            <div className="flex items-center gap-1.5 mt-1">
-              <h3 className="text-2xl font-black text-amber-500">
-                {isSummaryLoading ? '...' : (summary?.avgRating || 0).toFixed(1)}
-              </h3>
-              <div className="flex items-center text-amber-400">
-                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+        {/* SECTION 1 FILTERS: Full 7 filters when 'feedback' is active */}
+        {activeSection === 'feedback' ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {/* Department */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  List of Departments:
+                </label>
+                <select
+                  value={selectedDept}
+                  onChange={(e) => { setSelectedDept(e.target.value); setCurrentPage(1); }}
+                  className="w-full text-xs h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="0">Select</option>
+                  {departmentList.map((d) => (
+                    <option key={d.departmentId || d.id} value={d.departmentName || d.name}>
+                      {d.departmentName || d.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
-          </div>
-          <div className="p-3 bg-amber-50 dark:bg-amber-950/40 text-amber-500 rounded-2xl">
-            <Award className="w-6 h-6" />
-          </div>
-        </div>
-      </div>
 
-      {/* Main Section Content */}
-      {activeSection === 'feedback' ? (
-        <>
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Chart 1: Solution Satisfied */}
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <PieIcon className="w-4 h-4 text-emerald-500" />
-                Satisfied with Solution
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-emerald-600">Yes</span>
-                    <span>{summary?.satisfiedYesPercent || 0}% ({summary?.satisfiedYesCount || 0})</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${summary?.satisfiedYesPercent || 0}%` }}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-rose-600">No</span>
-                    <span>{summary?.satisfiedNoPercent || 0}% ({summary?.satisfiedNoCount || 0})</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-rose-500 rounded-full" style={{ width: `${summary?.satisfiedNoPercent || 0}%` }}></div>
-                  </div>
-                </div>
+              {/* Category */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  Category
+                </label>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
+                  className="w-full text-xs h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="0">Select</option>
+                  {categoryList.map((c) => (
+                    <option key={c.categoryId || c.id} value={c.categoryName || c.name}>
+                      {c.categoryName || c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
 
-            {/* Chart 2: Call Received */}
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <PhoneCall className="w-4 h-4 text-indigo-500" />
-                Department Contact Received
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-indigo-600">Call / Message Received</span>
-                    <span>{summary?.callReceivedYesPercent || 0}% ({summary?.callReceivedYesCount || 0})</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${summary?.callReceivedYesPercent || 0}%` }}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-500">No Contact</span>
-                    <span>{summary?.callReceivedNoPercent || 0}% ({summary?.callReceivedNoCount || 0})</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-slate-400 rounded-full" style={{ width: `${summary?.callReceivedNoPercent || 0}%` }}></div>
-                  </div>
-                </div>
+              {/* Gender */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  Gender
+                </label>
+                <select
+                  value={selectedGender}
+                  onChange={(e) => { setSelectedGender(e.target.value); setCurrentPage(1); }}
+                  className="w-full text-xs h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="0">Select</option>
+                  <option value="MALE">MALE</option>
+                  <option value="FEMALE">FEMALE</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
               </div>
-            </div>
 
-            {/* Chart 3: Experience Breakdown */}
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Star className="w-4 h-4 text-amber-500" />
-                Disposal Experience
-              </h4>
-              <div className="space-y-2 text-[11px]">
-                <div className="flex justify-between font-semibold">
-                  <span className="text-emerald-600">Excellent</span>
-                  <span>{summary?.experienceExcellentCount || 0} ({summary?.experienceExcellentPercent || 0}%)</span>
-                </div>
-                <div className="flex justify-between font-semibold">
-                  <span className="text-blue-600">Good</span>
-                  <span>{summary?.experienceGoodCount || 0} ({summary?.experienceGoodPercent || 0}%)</span>
-                </div>
-                <div className="flex justify-between font-semibold">
-                  <span className="text-amber-600">Average</span>
-                  <span>{summary?.experienceAverageCount || 0} ({summary?.experienceAveragePercent || 0}%)</span>
-                </div>
-                <div className="flex justify-between font-semibold">
-                  <span className="text-rose-600">Poor</span>
-                  <span>{summary?.experiencePoorCount || 0} ({summary?.experiencePoorPercent || 0}%)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Chart 4: Recommendation */}
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h4 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-blue-500" />
-                Recommend Portal
-              </h4>
-              <div className="space-y-2 text-[11px]">
-                <div className="flex justify-between font-semibold">
-                  <span className="text-emerald-600">Yes Definitely</span>
-                  <span>{summary?.reuseYesDefinitelyCount || 0}</span>
-                </div>
-                <div className="flex justify-between font-semibold">
-                  <span className="text-blue-600">Maybe (Less Time)</span>
-                  <span>{summary?.reuseMaybeLessTimeCount || 0}</span>
-                </div>
-                <div className="flex justify-between font-semibold">
-                  <span className="text-slate-600 dark:text-slate-400">Maybe (Process Change)</span>
-                  <span>{summary?.reuseProcessChangeCount || 0}</span>
-                </div>
-                <div className="flex justify-between font-semibold">
-                  <span className="text-rose-600">No Never</span>
-                  <span>{summary?.reuseNoNeverCount || 0}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Feedback Data Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            {/* Controls Bar */}
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="relative flex-1 md:w-72">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              {/* From Date */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  From/on
+                </label>
                 <input
-                  type="text"
-                  placeholder="Search grievance ID, citizen, comments..."
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                  className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-800 dark:text-slate-200"
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                  className="w-full text-xs h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <span>Show</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                    className="px-2 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                  <span>entries</span>
-                </div>
+              {/* To Date */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  To
+                </label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+                  className="w-full text-xs h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={exportFeedbackExcel}
-                    disabled={feedbackList.length === 0}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-xl border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
-                    <span>Excel</span>
-                  </button>
-                  <button
-                    onClick={exportFeedbackPDF}
-                    disabled={feedbackList.length === 0}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-400 rounded-xl border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors disabled:opacity-50"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>PDF</span>
-                  </button>
-                </div>
+              {/* District */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  District:
+                </label>
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => { setSelectedDistrict(e.target.value); setCurrentPage(1); }}
+                  className="w-full text-xs h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="0">Select</option>
+                  {districtList.map((dist) => (
+                    <option key={dist.districtId || dist.id} value={dist.districtName || dist.name}>
+                      {dist.districtName || dist.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Row 2: Satisfaction & Reset */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-2">
+              <div className="w-full sm:w-64">
+                <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                  Disposal Satisfaction:
+                </label>
+                <select
+                  value={selectedSatisfaction}
+                  onChange={(e) => { setSelectedSatisfaction(e.target.value); setCurrentPage(1); }}
+                  className="w-full text-xs h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="0">Select</option>
+                  <option value="Yes">Satisfied (Yes)</option>
+                  <option value="No">Not Satisfied (No)</option>
+                  <option value="1-5">Experience: 1-5</option>
+                  <option value="6-10">Experience: 6-10</option>
+                </select>
+              </div>
+
+              <div>
+                <button
+                  onClick={handleResetFilters}
+                  className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Reset</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* MIS REPORT FILTERS: Strictly List of Departments + Reset button matching legacy JKSv2 */
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4 max-w-lg">
+            <div className="flex-1">
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                List of Departments:
+              </label>
+              <select
+                value={selectedDept}
+                onChange={(e) => { setSelectedDept(e.target.value); setMisIndvPage(1); setMisDeptPage(1); }}
+                className="w-full text-xs h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="0">Select</option>
+                {departmentList.map((d) => (
+                  <option key={d.departmentId || d.id} value={d.departmentName || d.name}>
+                    {d.departmentName || d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <button
+                onClick={handleResetFilters}
+                className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 
+          ==================================================
+          MODE 1: FEEDBACK ANALYSIS SECTION
+          Improved Charts Grid + Department Comparison Horizontal Bar Chart
+          ==================================================
+      */}
+      {activeSection === 'feedback' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* 5 Legacy Charts Grid with Card View Switcher */}
+          {isSummaryLoading ? (
+            <div className="h-64 flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-2" />
+              <p className="text-xs text-slate-400">Loading Feedback Analytics...</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                {/* Chart 1: Solution Satisfied */}
+                <ChartCard
+                  title="Solution Satisfaction"
+                  subtitle="Were you satisfied with solution?"
+                  total={(summary?.satisfiedYesCount || 0) + (summary?.satisfiedNoCount || 0)}
+                  activeFilter={['Yes', 'No'].includes(selectedSatisfaction) ? selectedSatisfaction : null}
+                  onClearFilter={() => setSelectedSatisfaction('0')}
+                  chartType={chartTypes.q1}
+                  onToggleChartType={(type) => toggleChartType('q1', type)}
+                  displayMode={displayModes.q1}
+                  onToggleDisplayMode={() => toggleDisplayMode('q1')}
+                >
+                  {chartTypes.q1 === 'donut' ? (
+                    <DonutChart
+                      data={chartSolutionData}
+                      activeFilter={selectedSatisfaction}
+                      onSliceClick={handleSliceClick}
+                      displayMode={displayModes.q1}
+                      size={170}
+                    />
+                  ) : (
+                    <BarChart
+                      data={chartSolutionData}
+                      activeFilter={selectedSatisfaction}
+                      onBarClick={handleSliceClick}
+                      displayMode={displayModes.q1}
+                    />
+                  )}
+                </ChartCard>
+
+                {/* Chart 2: Call Received */}
+                <ChartCard
+                  title="Call / Message Received"
+                  subtitle="Received call or SMS from dept?"
+                  total={(summary?.callReceivedYesCount || 0) + (summary?.callReceivedNoCount || 0)}
+                  activeFilter={['Yes', 'No'].includes(selectedSatisfaction) ? selectedSatisfaction : null}
+                  onClearFilter={() => setSelectedSatisfaction('0')}
+                  chartType={chartTypes.q2}
+                  onToggleChartType={(type) => toggleChartType('q2', type)}
+                  displayMode={displayModes.q2}
+                  onToggleDisplayMode={() => toggleDisplayMode('q2')}
+                >
+                  {chartTypes.q2 === 'donut' ? (
+                    <DonutChart
+                      data={chartCallData}
+                      activeFilter={selectedSatisfaction}
+                      onSliceClick={handleSliceClick}
+                      displayMode={displayModes.q2}
+                      size={170}
+                    />
+                  ) : (
+                    <BarChart
+                      data={chartCallData}
+                      activeFilter={selectedSatisfaction}
+                      onBarClick={handleSliceClick}
+                      displayMode={displayModes.q2}
+                    />
+                  )}
+                </ChartCard>
+
+                {/* Chart 3: Overall Experience */}
+                <ChartCard
+                  title="Overall Experience"
+                  subtitle="Rating score (1-5 vs 6-10)"
+                  total={(summary?.rating1_1_5Count || 0) + (summary?.rating1_6_10Count || 0)}
+                  activeFilter={['1-5', '6-10'].includes(selectedSatisfaction) ? selectedSatisfaction : null}
+                  onClearFilter={() => setSelectedSatisfaction('0')}
+                  chartType={chartTypes.q3}
+                  onToggleChartType={(type) => toggleChartType('q3', type)}
+                  displayMode={displayModes.q3}
+                  onToggleDisplayMode={() => toggleDisplayMode('q3')}
+                >
+                  {chartTypes.q3 === 'donut' ? (
+                    <DonutChart
+                      data={chartExpData}
+                      activeFilter={selectedSatisfaction}
+                      onSliceClick={handleSliceClick}
+                      displayMode={displayModes.q3}
+                      size={170}
+                    />
+                  ) : (
+                    <BarChart
+                      data={chartExpData}
+                      activeFilter={selectedSatisfaction}
+                      onBarClick={handleSliceClick}
+                      displayMode={displayModes.q3}
+                    />
+                  )}
+                </ChartCard>
+
+                {/* Chart 4: Grievance Lodging Process */}
+                <ChartCard
+                  title="Lodging Process"
+                  subtitle="Ease of lodging grievance"
+                  total={(summary?.rating2_1_5Count || 0) + (summary?.rating2_6_10Count || 0)}
+                  activeFilter={['1-5', '6-10'].includes(selectedSatisfaction) ? selectedSatisfaction : null}
+                  onClearFilter={() => setSelectedSatisfaction('0')}
+                  chartType={chartTypes.q4}
+                  onToggleChartType={(type) => toggleChartType('q4', type)}
+                  displayMode={displayModes.q4}
+                  onToggleDisplayMode={() => toggleDisplayMode('q4')}
+                >
+                  {chartTypes.q4 === 'donut' ? (
+                    <DonutChart
+                      data={chartLodgingData}
+                      activeFilter={selectedSatisfaction}
+                      onSliceClick={handleSliceClick}
+                      displayMode={displayModes.q4}
+                      size={170}
+                    />
+                  ) : (
+                    <BarChart
+                      data={chartLodgingData}
+                      activeFilter={selectedSatisfaction}
+                      onBarClick={handleSliceClick}
+                      displayMode={displayModes.q4}
+                    />
+                  )}
+                </ChartCard>
+              </div>
+
+              {/* Chart 5: Portal Recommendation - Wide Featured Card */}
+              <div className="max-w-2xl mx-auto">
+                <ChartCard
+                  title="Would you recommend this portal for Grievance lodging to others too?"
+                  subtitle="Citizen willingness to recommend the portal across 4 response categories"
+                  total={(summary?.recommendYesCount || 0) + (summary?.recommendMaybeTimeCount || 0) + (summary?.recommendNoCount || 0) + (summary?.recommendMaybeProcessCount || 0)}
+                  activeFilter={selectedSatisfaction !== '0' && selectedSatisfaction !== 'Yes' && selectedSatisfaction !== 'No' && selectedSatisfaction !== '1-5' && selectedSatisfaction !== '6-10' ? selectedSatisfaction : null}
+                  onClearFilter={() => setSelectedSatisfaction('0')}
+                  chartType={chartTypes.q5}
+                  onToggleChartType={(type) => toggleChartType('q5', type)}
+                  displayMode={displayModes.q5}
+                  onToggleDisplayMode={() => toggleDisplayMode('q5')}
+                >
+                  {chartTypes.q5 === 'donut' ? (
+                    <DonutChart
+                      data={chartRecommendData}
+                      activeFilter={selectedSatisfaction}
+                      onSliceClick={handleSliceClick}
+                      displayMode={displayModes.q5}
+                      size={190}
+                    />
+                  ) : (
+                    <BarChart
+                      data={chartRecommendData}
+                      activeFilter={selectedSatisfaction}
+                      onBarClick={handleSliceClick}
+                      displayMode={displayModes.q5}
+                    />
+                  )}
+                </ChartCard>
+              </div>
+
+              {/* NEW SECTION: Meaningful Department-Wise Comparison Bar Chart */}
+              <DepartmentComparisonBarChart
+                departmentData={deptComparisonList}
+                mode="legacy"
+                selectedDept={selectedDept}
+                onSelectDept={(deptName) => {
+                  setSelectedDept(deptName);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Table: Feedback Analysis Section (#feedBackTbl) */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden p-5 space-y-4">
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h5 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide m-0">
+                Feedback Analysis Section
+              </h5>
+
+              {/* Export Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportFeedbackExcel}
+                  title="Export to Excel"
+                  className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer border-0"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={exportFeedbackPDF}
+                  title="Export to PDF"
+                  className="p-1.5 rounded-lg bg-slate-900 hover:bg-black text-white transition-colors cursor-pointer border-0"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search & Page Length Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
+              <div className="flex items-center gap-2">
+                <span>Show</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                  className="h-8 px-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span>entries</span>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  className="h-8 pl-8 pr-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs focus:ring-1 focus:ring-blue-500"
+                />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               </div>
             </div>
 
             {/* Table */}
-            {isListLoading ? (
-              <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center space-y-2">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                <p className="text-xs">Loading feedback records...</p>
-              </div>
-            ) : feedbackList.length === 0 ? (
-              <div className="p-12 text-center text-slate-500 space-y-2">
-                <MessageSquare className="w-8 h-8 mx-auto text-slate-400 stroke-1" />
-                <p className="text-sm font-semibold">No Feedback Records Found</p>
-                <p className="text-xs text-slate-400">Try adjusting your filters or date range.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
-                      <th className="p-3.5 w-14 text-center">S. No.</th>
-                      <th className="p-3.5">Grievance ID</th>
-                      <th className="p-3.5">Complainant</th>
-                      <th className="p-3.5">Department</th>
-                      <th className="p-3.5">Experience</th>
-                      <th className="p-3.5 text-center">Satisfied</th>
-                      <th className="p-3.5 text-center">Call Received</th>
-                      <th className="p-3.5">Submitted Date</th>
-                      <th className="p-3.5 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {feedbackList.map((item, idx) => (
-                      <tr key={item.id || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                        <td className="p-3.5 text-center font-medium text-slate-400">
-                          {(currentPage - 1) * pageSize + idx + 1}
-                        </td>
-                        <td className="p-3.5 font-semibold text-blue-600 dark:text-blue-400">{item.uniqId}</td>
-                        <td className="p-3.5 font-medium text-slate-800 dark:text-slate-200">{item.complainantName || 'N/A'}</td>
-                        <td className="p-3.5 text-slate-600 dark:text-slate-400">{item.department || 'N/A'}</td>
-                        <td className="p-3.5">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            item.overallExperience === 'Excellent' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400' :
-                            item.overallExperience === 'Good' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400' :
-                            item.overallExperience === 'Average' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400' :
-                            'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400'
-                          }`}>
-                            {item.overallExperience || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-center font-bold">
-                          <span className={item.satisfied === 'Yes' ? 'text-emerald-600' : 'text-rose-500'}>
-                            {item.satisfied || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-center font-bold">
-                          <span className={item.callReceived === 'Yes' ? 'text-indigo-600' : 'text-slate-400'}>
-                            {item.callReceived || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-slate-500">{item.createdAt || 'N/A'}</td>
-                        <td className="p-3.5 text-center">
-                          <button
-                            onClick={() => setSelectedFeedback(item)}
-                            className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
-                            title="View Feedback Details"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Pagination */}
-            {!isListLoading && feedbackList.length > 0 && (
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-                <div>
-                  Showing <span className="font-semibold text-slate-700 dark:text-slate-300">{(currentPage - 1) * pageSize + 1}</span> to{' '}
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">{Math.min(currentPage * pageSize, totalRecords)}</span> of{' '}
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">{totalRecords}</span> entries
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-semibold">
-                    {currentPage} / {totalPages || 1}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage >= totalPages}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        /* MIS Report View */
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-800 dark:text-white">Department-Wise Feedback MIS Report</h3>
-            <button
-              onClick={exportMisExcel}
-              disabled={misList.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Export MIS Excel</span>
-            </button>
-          </div>
-
-          {isMisLoading ? (
-            <div className="py-12 text-center text-slate-500 flex flex-col items-center justify-center space-y-2">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-              <p className="text-xs">Loading MIS Report...</p>
-            </div>
-          ) : misList.length === 0 ? (
-            <div className="py-12 text-center text-slate-500">No MIS Report data found.</div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
-                    <th className="p-3 w-12 text-center">S. No.</th>
-                    <th className="p-3">Department Name</th>
-                    <th className="p-3 text-center">Total Feedbacks</th>
-                    <th className="p-3 text-center text-emerald-600">Satisfied (%)</th>
-                    <th className="p-3 text-center text-rose-500">Dissatisfied (%)</th>
-                    <th className="p-3 text-center text-indigo-600">Call Recv (%)</th>
-                    <th className="p-3 text-center">Excellent (%)</th>
-                    <th className="p-3 text-center">Good (%)</th>
-                    <th className="p-3 text-center">Average (%)</th>
-                    <th className="p-3 text-center text-rose-500">Poor (%)</th>
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead className="bg-[#3b82f6] text-white font-bold uppercase text-[11px] tracking-wider select-none">
+                  <tr>
+                    <th className="p-3 text-center border-r border-blue-400/30 w-14">S. No.</th>
+                    <th className="p-3 border-r border-blue-400/30">Grievance ID</th>
+                    <th className="p-3 border-r border-blue-400/30">Department</th>
+                    <th className="p-3 border-r border-blue-400/30">Main Category</th>
+                    <th className="p-3 border-r border-blue-400/30">Feedback</th>
+                    <th className="p-3 border-r border-blue-400/30">Gender</th>
+                    <th className="p-3 text-center w-24">Details</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                  {misList.map((m, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
-                      <td className="p-3 text-center font-medium text-slate-400">{idx + 1}</td>
-                      <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">{m.department}</td>
-                      <td className="p-3 text-center font-bold text-blue-600">{m.totalGrievances}</td>
-                      <td className="p-3 text-center font-bold text-emerald-600">{m.satisfiedYesPercent}%</td>
-                      <td className="p-3 text-center font-bold text-rose-500">{m.satisfiedNoPercent}%</td>
-                      <td className="p-3 text-center font-bold text-indigo-600">{m.callReceivedYesPercent}%</td>
-                      <td className="p-3 text-center">{m.experienceExcellentPercent}%</td>
-                      <td className="p-3 text-center">{m.experienceGoodPercent}%</td>
-                      <td className="p-3 text-center">{m.experienceAveragePercent}%</td>
-                      <td className="p-3 text-center text-rose-500 font-bold">{m.experiencePoorPercent}%</td>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                  {isListLoading ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+                        Loading feedback records...
+                      </td>
                     </tr>
-                  ))}
+                  ) : feedbackList.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400">
+                        No feedback records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    feedbackList.map((row, idx) => (
+                      <tr key={row.feedbackId || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="p-3 text-center font-semibold text-slate-500">
+                          {(currentPage - 1) * pageSize + idx + 1}
+                        </td>
+                        <td className="p-3 font-bold text-blue-600 dark:text-blue-400">
+                          {row.uniqId || 'N/A'}
+                        </td>
+                        <td className="p-3 font-medium uppercase text-slate-700 dark:text-slate-300">
+                          {row.department || 'N/A'}
+                        </td>
+                        <td className="p-3 text-slate-600 dark:text-slate-400 uppercase">
+                          {row.category || 'N/A'}
+                        </td>
+                        <td className="p-3 text-slate-500 text-[11px]">
+                          {row.createdAt || 'N/A'}
+                        </td>
+                        <td className="p-3 font-semibold uppercase text-slate-600 dark:text-slate-400">
+                          {row.gender || 'N/A'}
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => setSelectedFeedback(row)}
+                              title="View Feedback Details"
+                              className="p-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer border-0"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => navigate(`/super-admin/grievance-details?id=${row.grievanceId || row.uniqId}`)}
+                              title="View Grievance"
+                              className="p-1 rounded-md bg-amber-500 hover:bg-amber-600 text-white transition-colors cursor-pointer border-0"
+                            >
+                              <ExternalLinkIcon className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
-          )}
+
+            {/* Pagination */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 pt-2">
+              <span>
+                Showing {totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1} to{' '}
+                {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} entries
+              </span>
+
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="px-3 py-1 font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-600 rounded-md">
+                  {currentPage}
+                </span>
+                <button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Single Feedback Detail Modal */}
+      {/* 
+          ==================================================
+          MODE 2: MIS REPORT (Dual 2-Tier Tables: Individual & Dept Wise)
+          Matching Screenshot 2, 4, 5
+          ==================================================
+      */}
+      {activeSection === 'mis' && (
+        <div className="space-y-6 animate-fadeIn">
+
+          {/* TABLE 1: MIS REPORT INDIVIDUAL */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden p-5 space-y-4">
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h5 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide m-0">
+                MIS REPORT INDIVIDUAL
+              </h5>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportLegacyMisIndvExcel}
+                  title="Export to Excel"
+                  className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer border-0"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={exportLegacyMisIndvPDF}
+                  title="Export to PDF"
+                  className="p-1.5 rounded-lg bg-slate-900 hover:bg-black text-white transition-colors cursor-pointer border-0"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
+              <div className="flex items-center gap-2">
+                <span>Show</span>
+                <select
+                  value={misIndvSize}
+                  onChange={(e) => { setMisIndvSize(Number(e.target.value)); setMisIndvPage(1); }}
+                  className="h-8 px-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span>entries</span>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={misIndvSearch}
+                  onChange={(e) => { setMisIndvSearch(e.target.value); setMisIndvPage(1); }}
+                  className="h-8 pl-8 pr-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs focus:ring-1 focus:ring-blue-500"
+                />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+              </div>
+            </div>
+
+            {/* 2-Tier Table 1: Individual */}
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 border-collapse">
+                <thead className="bg-[#3b82f6] text-white font-bold uppercase text-[10px] tracking-wider select-none">
+                  {/* Tier 1 Header */}
+                  <tr>
+                    <th rowSpan={2} className="p-2.5 text-center border border-blue-400/40 w-12 align-middle">
+                      S. No.
+                    </th>
+                    <th rowSpan={2} className="p-2.5 border border-blue-400/40 min-w-[150px] align-middle">
+                      Name of the Department
+                    </th>
+                    <th rowSpan={2} className="p-2.5 border border-blue-400/40 min-w-[130px] align-middle">
+                      Grievance ID
+                    </th>
+                    <th rowSpan={2} className="p-2.5 border border-blue-400/40 min-w-[130px] align-middle">
+                      Name of Complainant
+                    </th>
+                    <th rowSpan={2} className="p-2.5 border border-blue-400/40 min-w-[110px] align-middle">
+                      Contact No. of the Complainant
+                    </th>
+                    <th rowSpan={2} className="p-2.5 border border-blue-400/40 min-w-[160px] align-middle">
+                      Grievance closed by (Name/Office Name of User)
+                    </th>
+                    <th colSpan={2} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Overall, were you satisfied with the solution provided by department officials?
+                    </th>
+                    <th colSpan={2} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Have you received any call or message from Department?
+                    </th>
+                    <th colSpan={2} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Overall, Experience of Grievance Disposal?
+                    </th>
+                    <th colSpan={2} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Grievance Lodging Process
+                    </th>
+                    <th colSpan={4} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Would you recommend this portal for Grievance lodging to others too?
+                    </th>
+                  </tr>
+                  {/* Tier 2 Sub-columns */}
+                  <tr className="bg-blue-600/90 text-center text-[9px]">
+                    <th className="p-2 border border-blue-400/40">Yes (%)</th>
+                    <th className="p-2 border border-blue-400/40">No (%)</th>
+                    <th className="p-2 border border-blue-400/40">Yes (%)</th>
+                    <th className="p-2 border border-blue-400/40">No (%)</th>
+                    <th className="p-2 border border-blue-400/40">1-5 (%)</th>
+                    <th className="p-2 border border-blue-400/40">6-10 (%)</th>
+                    <th className="p-2 border border-blue-400/40">1-5 (%)</th>
+                    <th className="p-2 border border-blue-400/40">6-10 (%)</th>
+                    <th className="p-2 border border-blue-400/40">Yes Definitely</th>
+                    <th className="p-2 border border-blue-400/40">Maybe, If It Takes Less Time</th>
+                    <th className="p-2 border border-blue-400/40">No, Never</th>
+                    <th className="p-2 border border-blue-400/40">Maybe, If The Process Changed</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 text-[11px]">
+                  {isMisIndvLoading ? (
+                    <tr>
+                      <td colSpan={18} className="p-8 text-center text-slate-400">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+                        Loading MIS Report Individual...
+                      </td>
+                    </tr>
+                  ) : misIndvData.length === 0 ? (
+                    <tr>
+                      <td colSpan={18} className="p-8 text-center text-slate-400">
+                        No records found for the selected department.
+                      </td>
+                    </tr>
+                  ) : (
+                    misIndvData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="p-2 text-center font-semibold text-slate-500 border-r border-slate-100 dark:border-slate-800">
+                          {(misIndvPage - 1) * misIndvSize + idx + 1}
+                        </td>
+                        <td className="p-2 font-medium uppercase text-slate-700 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800">
+                          {row.departmentName || 'N/A'}
+                        </td>
+                        <td className="p-2 font-bold text-blue-600 dark:text-blue-400 border-r border-slate-100 dark:border-slate-800">
+                          {row.grievanceId || 'N/A'}
+                        </td>
+                        <td className="p-2 text-slate-700 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800">
+                          {row.complainantName || 'N/A'}
+                        </td>
+                        <td className="p-2 text-slate-600 dark:text-slate-400 border-r border-slate-100 dark:border-slate-800">
+                          {row.contactNo || 'N/A'}
+                        </td>
+                        <td className="p-2 text-slate-700 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800 text-[10px]">
+                          {row.closedBy || 'N/A'}
+                        </td>
+
+                        {/* Satisfied Yes/No */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.satisfiedYes || 'No'}</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.satisfiedNo || 'No'}</td>
+
+                        {/* Call Received Yes/No */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.callReceivedYes || 'No'}</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.callReceivedNo || 'No'}</td>
+
+                        {/* Rating 1 1-5 / 6-10 */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.rating1_1_5 || 'No'}</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.rating1_6_10 || 'No'}</td>
+
+                        {/* Rating 2 1-5 / 6-10 */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.rating2_1_5 || 'No'}</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.rating2_6_10 || 'No'}</td>
+
+                        {/* Recommend 4 categories */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.recommendYes || 'No'}</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.recommendMaybeTime || 'No'}</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{row.recommendNo || 'No'}</td>
+                        <td className="p-2 text-center font-semibold">{row.recommendMaybeProcess || 'No'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Table 1 */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 pt-2">
+              <span>
+                Showing {misIndvTotalRecords === 0 ? 0 : (misIndvPage - 1) * misIndvSize + 1} to{' '}
+                {Math.min(misIndvPage * misIndvSize, misIndvTotalRecords)} of {misIndvTotalRecords} entries
+              </span>
+
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={misIndvPage <= 1}
+                  onClick={() => setMisIndvPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="px-3 py-1 font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-600 rounded-md">
+                  {misIndvPage}
+                </span>
+                <button
+                  disabled={misIndvPage >= misIndvTotalPages}
+                  onClick={() => setMisIndvPage((p) => Math.min(misIndvTotalPages, p + 1))}
+                  className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* TABLE 2: MIS REPORT DEPARTMENT WISE */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden p-5 space-y-4">
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <h5 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wide m-0">
+                MIS REPORT DEPARTMENT WISE
+              </h5>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportLegacyMisDeptExcel}
+                  title="Export to Excel"
+                  className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer border-0"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={exportLegacyMisDeptPDF}
+                  title="Export to PDF"
+                  className="p-1.5 rounded-lg bg-slate-900 hover:bg-black text-white transition-colors cursor-pointer border-0"
+                >
+                  <FileText className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
+              <div className="flex items-center gap-2">
+                <span>Show</span>
+                <select
+                  value={misDeptSize}
+                  onChange={(e) => { setMisDeptSize(Number(e.target.value)); setMisDeptPage(1); }}
+                  className="h-8 px-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span>entries</span>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={misDeptSearch}
+                  onChange={(e) => { setMisDeptSearch(e.target.value); setMisDeptPage(1); }}
+                  className="h-8 pl-8 pr-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs focus:ring-1 focus:ring-blue-500"
+                />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+              </div>
+            </div>
+
+            {/* 2-Tier Table 2: Department Wise */}
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 border-collapse">
+                <thead className="bg-[#3b82f6] text-white font-bold uppercase text-[10px] tracking-wider select-none">
+                  {/* Tier 1 Header */}
+                  <tr>
+                    <th rowSpan={2} className="p-2.5 text-center border border-blue-400/40 w-12 align-middle">
+                      S. No.
+                    </th>
+                    <th rowSpan={2} className="p-2.5 border border-blue-400/40 min-w-[200px] align-middle">
+                      Name of the Department
+                    </th>
+                    <th rowSpan={2} className="p-2.5 text-center border border-blue-400/40 min-w-[130px] align-middle">
+                      No. of Grievances on which Feedback has been Received
+                    </th>
+                    <th colSpan={2} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Overall, were you satisfied with the solution provided by department officials?
+                    </th>
+                    <th colSpan={2} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Have you received any call or message from Department?
+                    </th>
+                    <th colSpan={2} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Overall, Experience of Grievance Disposal?
+                    </th>
+                    <th colSpan={2} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Grievance Lodging Process
+                    </th>
+                    <th colSpan={4} className="p-2 text-center border border-blue-400/40 bg-blue-700/60">
+                      Would you recommend this portal for Grievance lodging to others too?
+                    </th>
+                  </tr>
+                  {/* Tier 2 Sub-columns */}
+                  <tr className="bg-blue-600/90 text-center text-[9px]">
+                    <th className="p-2 border border-blue-400/40">Yes (%)</th>
+                    <th className="p-2 border border-blue-400/40">No (%)</th>
+                    <th className="p-2 border border-blue-400/40">Yes (%)</th>
+                    <th className="p-2 border border-blue-400/40">No (%)</th>
+                    <th className="p-2 border border-blue-400/40">1-5 (%)</th>
+                    <th className="p-2 border border-blue-400/40">6-10 (%)</th>
+                    <th className="p-2 border border-blue-400/40">1-5 (%)</th>
+                    <th className="p-2 border border-blue-400/40">6-10 (%)</th>
+                    <th className="p-2 border border-blue-400/40">Yes Definitely</th>
+                    <th className="p-2 border border-blue-400/40">Maybe, If It Takes Less Time</th>
+                    <th className="p-2 border border-blue-400/40">No, Never</th>
+                    <th className="p-2 border border-blue-400/40">Maybe, If The Process Changed</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 text-[11px]">
+                  {isMisDeptLoading ? (
+                    <tr>
+                      <td colSpan={15} className="p-8 text-center text-slate-400">
+                        <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+                        Loading MIS Report Department Wise...
+                      </td>
+                    </tr>
+                  ) : misDeptData.length === 0 ? (
+                    <tr>
+                      <td colSpan={15} className="p-8 text-center text-slate-400">
+                        No department summary data found.
+                      </td>
+                    </tr>
+                  ) : (
+                    misDeptData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="p-2 text-center font-semibold text-slate-500 border-r border-slate-100 dark:border-slate-800">
+                          {(misDeptPage - 1) * misDeptSize + idx + 1}
+                        </td>
+                        <td className="p-2 font-medium uppercase text-slate-700 dark:text-slate-300 border-r border-slate-100 dark:border-slate-800">
+                          {row.departmentName || 'N/A'}
+                        </td>
+                        <td className="p-2 text-center font-bold text-slate-800 dark:text-slate-100 border-r border-slate-100 dark:border-slate-800">
+                          {row.totalFeedbackCount || 0}
+                        </td>
+
+                        {/* Satisfied Yes/No */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.satisfiedYesPct || 0).toFixed(1)}%</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.satisfiedNoPct || 0).toFixed(1)}%</td>
+
+                        {/* Call Received Yes/No */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.callReceivedYesPct || 0).toFixed(1)}%</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.callReceivedNoPct || 0).toFixed(1)}%</td>
+
+                        {/* Rating 1 1-5 / 6-10 */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.rating1_1_5Pct || 0).toFixed(1)}%</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.rating1_6_10Pct || 0).toFixed(1)}%</td>
+
+                        {/* Rating 2 1-5 / 6-10 */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.rating2_1_5Pct || 0).toFixed(1)}%</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.rating2_6_10Pct || 0).toFixed(1)}%</td>
+
+                        {/* Recommend 4 categories */}
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.recommendYesPct || 0).toFixed(1)}%</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.recommendMaybeTimePct || 0).toFixed(1)}%</td>
+                        <td className="p-2 text-center border-r border-slate-100 dark:border-slate-800 font-semibold">{(row.recommendNoPct || 0).toFixed(1)}%</td>
+                        <td className="p-2 text-center font-semibold">{(row.recommendMaybeProcessPct || 0).toFixed(1)}%</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Table 2 */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 pt-2">
+              <span>
+                Showing {misDeptTotalRecords === 0 ? 0 : (misDeptPage - 1) * misDeptSize + 1} to{' '}
+                {Math.min(misDeptPage * misDeptSize, misDeptTotalRecords)} of {misDeptTotalRecords} entries
+              </span>
+
+              <div className="flex items-center gap-1">
+                <button
+                  disabled={misDeptPage <= 1}
+                  onClick={() => setMisDeptPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="px-3 py-1 font-bold bg-blue-50 dark:bg-blue-950/50 text-blue-600 rounded-md">
+                  {misDeptPage}
+                </span>
+                <button
+                  disabled={misDeptPage >= misDeptTotalPages}
+                  onClick={() => setMisDeptPage((p) => Math.min(misDeptTotalPages, p + 1))}
+                  className="px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SINGLE FEEDBACK VIEW MODAL */}
       {selectedFeedback && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-lg p-6 text-left space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-800 dark:text-white">Feedback Details #{selectedFeedback.uniqId}</h3>
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  Citizen Feedback Details
+                </h4>
+                <p className="text-[11px] text-blue-600 font-semibold">
+                  {selectedFeedback.uniqId || 'N/A'}
+                </p>
+              </div>
               <button
                 onClick={() => setSelectedFeedback(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 border-0 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-2 text-xs text-slate-700 dark:text-slate-300">
-              <div className="flex justify-between border-b border-slate-100 dark:border-slate-800/60 py-1.5">
-                <span className="text-slate-400 font-medium">Complainant:</span>
-                <span className="font-bold">{selectedFeedback.complainantName || 'N/A'}</span>
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Department</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedFeedback.department || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Category</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedFeedback.category || 'N/A'}</span>
+                </div>
+                <div className="mt-2">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Date</span>
+                  <span className="text-slate-700 dark:text-slate-300">{selectedFeedback.createdAt || 'N/A'}</span>
+                </div>
+                <div className="mt-2">
+                  <span className="text-slate-400 block text-[10px] uppercase font-bold">Gender</span>
+                  <span className="text-slate-700 dark:text-slate-300">{selectedFeedback.gender || 'N/A'}</span>
+                </div>
               </div>
-              <div className="flex justify-between border-b border-slate-100 dark:border-slate-800/60 py-1.5">
-                <span className="text-slate-400 font-medium">Department:</span>
-                <span className="font-semibold">{selectedFeedback.department || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 dark:border-slate-800/60 py-1.5">
-                <span className="text-slate-400 font-medium">Overall Experience:</span>
-                <span className="font-bold text-emerald-600">{selectedFeedback.overallExperience || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 dark:border-slate-800/60 py-1.5">
-                <span className="text-slate-400 font-medium">Satisfied with Solution:</span>
-                <span className="font-bold">{selectedFeedback.satisfied || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-100 dark:border-slate-800/60 py-1.5">
-                <span className="text-slate-400 font-medium">Call/Message Received:</span>
-                <span className="font-bold">{selectedFeedback.callReceived || 'N/A'}</span>
-              </div>
-              <div className="pt-2">
-                <span className="text-slate-400 font-medium block mb-1">Feedback Comments:</span>
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-700 dark:text-slate-300 italic">
-                  "{selectedFeedback.description || selectedFeedback.poorReason || 'No comments provided.'}"
+
+              {/* Feedback responses */}
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between p-2 rounded-md border border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">Satisfied with solution provided:</span>
+                  <span className="font-bold text-blue-600">{selectedFeedback.satisfied || 'N/A'}</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-md border border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">Received any call or message:</span>
+                  <span className="font-bold text-blue-600">{selectedFeedback.callReceived || 'N/A'}</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-md border border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">Overall Experience (Rating 1):</span>
+                  <span className="font-bold text-blue-600">{selectedFeedback.rating1 || selectedFeedback.overallExperience || 'N/A'}</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-md border border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">Grievance Lodging Process (Rating 2):</span>
+                  <span className="font-bold text-blue-600">{selectedFeedback.rating2 || 'N/A'}</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-md border border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-600 dark:text-slate-400">Would recommend portal:</span>
+                  <span className="font-bold text-blue-600">{selectedFeedback.reusePortal || 'N/A'}</span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
+            <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
               <button
-                onClick={() => {
-                  const gId = selectedFeedback.grievanceId;
-                  setSelectedFeedback(null);
-                  if (gId) navigate(`/grievance/${gId}`);
-                }}
-                className="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl text-xs hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+                onClick={() => setSelectedFeedback(null)}
+                className="px-4 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs border-0 cursor-pointer"
               >
-                <span>View Full Grievance</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+// Icon helper
+function ExternalLinkIcon(props) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      {...props}
+    >
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
   );
 }
