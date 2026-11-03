@@ -90,11 +90,19 @@ export default function GrievanceDetail() {
     );
   }
 
-  // Simulated history logs / movement timeline
-  const movementLogs = [
-    { id: 1, action: 'Registered', remark: 'Grievance submitted by petitioner online.', updatedBy: 'Srujan Rallabandi (Petitioner)', timestamp: grievance.createdAt },
-    { id: 2, action: 'Forwarded', remark: 'Forwarded to Executive Engineer (Electrical Division) for immediate action.', updatedBy: 'Nodal Officer HUDD', timestamp: new Date(new Date(grievance.createdAt).getTime() + 2 * 60 * 60 * 1000).toISOString() }
-  ];
+  // Real history logs / movement timeline from backend response
+  const movementLogs = grievance.history && grievance.history.length > 0
+    ? grievance.history.map((h, idx) => ({
+        id: h.id || idx,
+        action: h.actionTaken || h.status,
+        status: h.status,
+        remark: h.remarks,
+        updatedBy: h.actionBy || 'Department Officer',
+        timestamp: h.dateTimeOfAction || grievance.createdAt
+      }))
+    : [
+        { id: 1, action: 'Submitted by citizen', remark: 'Grievance submitted by petitioner online.', updatedBy: grievance.citizenName || 'Petitioner', timestamp: grievance.createdAt }
+      ];
 
   return (
     <div className="flex-1 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans select-none animate-fadeIn text-xs">
@@ -196,11 +204,31 @@ export default function GrievanceDetail() {
               <Clock className="h-10 w-10 text-indigo-500" />
             </div>
             <h4 className="text-[10px] uppercase font-black text-slate-450 tracking-wider">Current Processing Status</h4>
-            <span className="block text-lg font-black text-slate-800 dark:text-slate-100 mt-1">{grievance.status}</span>
+            <span className={`inline-block px-3 py-1 rounded-md text-sm font-black uppercase mt-1 ${
+              (grievance.status || '').toLowerCase() === 'acknowledged'
+                ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                : (grievance.status || '').toLowerCase() === 'resolved'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+            }`}>
+              {grievance.status || 'Pending'}
+            </span>
             <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mt-4">
-              <div className="bg-indigo-600 h-full w-1/3 rounded-full"></div>
+              <div className={`h-full rounded-full ${
+                (grievance.status || '').toLowerCase() === 'resolved'
+                  ? 'w-full bg-emerald-500'
+                  : (grievance.status || '').toLowerCase() === 'acknowledged'
+                    ? 'w-2/3 bg-indigo-600'
+                    : 'w-1/3 bg-blue-600'
+              }`}></div>
             </div>
-            <p className="text-[10px] text-slate-450 mt-2 font-medium">Grievance submitted successfully and under review.</p>
+            <p className="text-[10px] text-slate-450 mt-2 font-medium">
+              {(grievance.status || '').toLowerCase() === 'acknowledged'
+                ? 'Grievance has been officially acknowledged by the department officer.'
+                : (grievance.status || '').toLowerCase() === 'resolved'
+                  ? 'Grievance has been resolved.'
+                  : 'Grievance submitted successfully and under review.'}
+            </p>
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-4">
@@ -214,8 +242,21 @@ export default function GrievanceDetail() {
                 <div key={log.id} className="relative">
                   <span className="absolute -left-[23px] top-1 bg-white dark:bg-slate-900 border-2 border-indigo-600 rounded-full h-3 w-3"></span>
                   <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-bold text-indigo-600 dark:text-indigo-400 uppercase">{log.action}</span>
-                    <span className="text-slate-450">{new Date(log.timestamp).toLocaleDateString('en-GB')}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400 uppercase">{log.action}</span>
+                      {log.status && (
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                          (log.status || '').toLowerCase() === 'acknowledged'
+                            ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300'
+                            : (log.status || '').toLowerCase() === 'resolved'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300'
+                        }`}>
+                          {log.status}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-slate-450">{log.timestamp ? new Date(log.timestamp).toLocaleString('en-GB') : ''}</span>
                   </div>
                   <p className="text-[11px] text-slate-700 dark:text-slate-300 mt-1">{log.remark}</p>
                   <span className="block text-[9px] text-slate-450 font-bold mt-1">By: {log.updatedBy}</span>

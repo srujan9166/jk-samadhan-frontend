@@ -52,6 +52,15 @@ export function StatusBadge({ status }) {
     );
   }
 
+  if (norm === 'acknowledged') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800">
+        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+        <span>Acknowledged</span>
+      </span>
+    );
+  }
+
   // Default: Pending / In Process
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-800">

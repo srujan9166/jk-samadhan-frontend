@@ -193,6 +193,26 @@ export default function SuperAdminGrievanceDetail() {
                   <td className="w-1/4 p-3 font-mono text-slate-755 text-slate-700 dark:text-slate-300">{grievance.createdAt ? new Date(grievance.createdAt).toLocaleString('en-GB') : 'N/A'}</td>
                 </tr>
 
+                {/* Status & Stage Row */}
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-indigo-50/20 dark:bg-indigo-950/20">
+                  <td className="p-3 bg-slate-50/50 dark:bg-slate-850/50 font-bold text-slate-500 border-r border-slate-200 dark:border-slate-800">Current Status</td>
+                  <td className="p-3 font-bold border-r border-slate-200 dark:border-slate-800">
+                    <span className={`px-2.5 py-1 rounded-md text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1.5 ${
+                      (grievance.status || '').toLowerCase() === 'acknowledged'
+                        ? 'bg-indigo-100 text-indigo-800 border border-indigo-300'
+                        : (grievance.status || '').toLowerCase() === 'resolved' || (grievance.status || '').toLowerCase() === 'final disposed'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : (grievance.status || '').toLowerCase() === 'appealed'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : 'bg-blue-100 text-blue-800 border border-blue-300'
+                    }`}>
+                      {grievance.status || 'Pending'}
+                    </span>
+                  </td>
+                  <td className="p-3 bg-slate-50/50 dark:bg-slate-850/50 font-bold text-slate-500 border-r border-slate-200 dark:border-slate-800">Workflow Stage</td>
+                  <td className="p-3 font-semibold text-slate-700 dark:text-slate-300">{grievance.finalStatus || 'Submitted'}</td>
+                </tr>
+
                 {/* Row 2 */}
                 <tr className="border-b border-slate-200 dark:border-slate-800">
                   <td className="p-3 bg-slate-50/50 dark:bg-slate-850/50 font-bold text-slate-500 border-r border-slate-200 dark:border-slate-800">Applicant Name</td>
@@ -316,12 +336,14 @@ export default function SuperAdminGrievanceDetail() {
                       <td className="p-3 border-r border-slate-200 dark:border-slate-800">{h.privilegeAssign || 'Normal'}</td>
                       <td className="p-3 border-r border-slate-200 dark:border-slate-800 font-semibold">{h.department}</td>
                       <td className="p-3 border-r border-slate-200 dark:border-slate-800 font-bold">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wider ${
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
                           h.status === 'Resolved' || h.status === 'Closed'
-                            ? 'bg-green-105 bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300' 
-                            : h.status === 'Pending' || h.status === 'Registered'
-                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300' 
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                            ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-300 border border-green-300' 
+                            : (h.status || '').toLowerCase() === 'acknowledged'
+                              ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-300'
+                              : h.status === 'Pending' || h.status === 'Registered'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300 border border-yellow-300' 
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-300'
                         }`}>
                           {h.status}
                         </span>

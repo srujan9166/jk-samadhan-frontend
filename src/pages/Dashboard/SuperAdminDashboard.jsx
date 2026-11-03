@@ -2035,6 +2035,13 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
             Does Not Pertain
           </span>
         );
+      case 'Acknowledged':
+        return (
+          <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-300 inline-flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-indigo-700" />
+            Acknowledged
+          </span>
+        );
       default:
         return (
           <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#fef08a] text-amber-900 border border-amber-300 inline-flex items-center gap-1">
@@ -6080,14 +6087,18 @@ export default function SuperAdminDashboard({ user, onLogout, normalizedRole, in
                               <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider flex items-center gap-1 w-fit ${
                                 (g.status || '').toLowerCase().includes('disposed') || (g.status || '').toLowerCase().includes('resolved')
                                   ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                  : (g.status || '').toLowerCase().includes('appeal')
-                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
-                                    : (g.status || '').toLowerCase().includes('forward')
-                                      ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300'
-                                      : 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300'
+                                  : (g.status || '').toLowerCase().includes('acknowledged')
+                                    ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-300'
+                                    : (g.status || '').toLowerCase().includes('appeal')
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                                      : (g.status || '').toLowerCase().includes('forward')
+                                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300'
+                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300'
                               }`}>
                                 {(g.status || '').toLowerCase().includes('disposed') || (g.status || '').toLowerCase().includes('resolved') ? (
                                   <CheckCircle2 className="w-3 h-3" />
+                                ) : (g.status || '').toLowerCase().includes('acknowledged') ? (
+                                  <Clock className="w-3 h-3 text-indigo-600" />
                                 ) : (
                                   <AlertCircle className="w-3 h-3" />
                                 )}
